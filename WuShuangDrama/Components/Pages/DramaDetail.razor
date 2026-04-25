@@ -1,0 +1,242 @@
+@page "/drama/{DramaId:int}"
+@using Microsoft.EntityFrameworkCore
+@inject WuShuangDrama.Data.DramaDbContext _db
+@implements IDisposable
+
+<div class="page">
+    <button class="back-btn" @onclick='() => _nav.NavigateTo("/")'>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+        返回项目列表
+    </button>
+
+    @if (_loading)
+    {
+        <div class="mt-4">
+            <div class="skeleton" style="height: 32px; width: 40%; margin-bottom: 12px;"></div>
+            <div class="skeleton" style="height: 16px; width: 60%;"></div>
+        </div>
+    }
+    else if (_error != null)
+    {
+        <div class="empty-state mt-4">
+            <div class="empty-state-title">加载失败</div>
+            <div class="empty-state-desc">@_error</div>
+            <button class="btn btn-primary mt-3" @onclick='() => LoadDrama()'>重试</button>
+        </div>
+    }
+    else if (_drama == null)
+    {
+        <div class="empty-state mt-4">
+            <div class="empty-state-title">项目不存在</div>
+            <div class="empty-state-desc">未找到该项目</div>
+        </div>
+    }
+    else
+    {
+        <div class="detail-header mt-4">
+            <div class="detail-info">
+                <h1 class="detail-title">@_drama.Title</h1>
+                <div class="detail-meta">
+                    <span class="tag tag-accent">@_drama.Style</span>
+                    <span class="detail-meta-item">@(_drama.TotalEpisodes ?? 1) 集</span>
+                    <span class="detail-meta-item">@_drama.Status</span>
+                    <span class="detail-meta-item">@FormatTime(_drama.CreatedAt) 创建</span>
+                    @if (_episodeCount > 0)
+                    {
+                        <span class="detail-meta-item">@_episodeCount 个片段</span>
+                    }
+                </div>
+            </div>
+            <div class="detail-actions">
+                <button class="btn btn-primary" @onclick='ShowAddEpisode'>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+                    添加片段
+                </button>
+            </div>
+        </div>
+
+        @if (_episodes.Count == 0)
+        {
+            <EmptyState Title="还没有片段" Description="添加一个片段开始制作">
+                <button class="btn btn-primary" @onclick='ShowAddEpisode'>添加片段</button>
+            </EmptyState>
+        }
+        else
+        {
+            <h3 style="margin-bottom: 12px; font-size: 1rem; font-weight: 600;">片段列表</h3>
+            <div class="episode-list">
+                @foreach (var ep in _episodes)
+                {
+                    <div class="episode-item" @onclick='() => _nav.NavigateTo($"/drama/{DramaId}/episode/{ep.EpisodeNumber}")'>
+                        <div class="episode-number">@ep.EpisodeNumber</div>
+                        <div class="episode-info">
+                            <div class="episode-name">@ep.Title</div>
+                            <div class="episode-sub">
+                                <span class="tag @GetStatusTag(ep.Status)">@ep.Status</span>
+                                @if (ep.Duration > 0)
+                                {
+                                    <span style="margin-left: 8px;">@ep.Duration 秒</span>
+                                }
+                            </div>
+                        </div>
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-3)" stroke-width="2" stroke-linecap="round"><polyline points="9 18 15 12 9 6" /></svg>
+                    </div>
+                }
+            </div>
+        }
+    }
+</div>
+
+@if (_showAddEpisode)
+{
+    <div class="overlay" @onclick='() => _showAddEpisode = false'>
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-title">添加片段</div>
+            <div class="field">
+                <label>片段标题</label>
+                <input class="input" @bind="_newEpisodeTitle" placeholder="输入片段标题" />
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>图片配置</label>
+                    <select class="input" @bind="_newImageConfigId">
+                        <option value="">默认</option>
+                        @foreach (var cfg in _imageConfigs)
+                        {
+                            <option value="@cfg.Id">@cfg.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>视频配置</label>
+                    <select class="input" @bind="_newVideoConfigId">
+                        <option value="">默认</option>
+                        @foreach (var cfg in _videoConfigs)
+                        {
+                            <option value="@cfg.Id">@cfg.Name</option>
+                        }
+                    </select>
+                </div>
+                <div class="field">
+                    <label>音频配置</label>
+                    <select class="input" @bind="_newAudioConfigId">
+                        <option value="">默认</option>
+                        @foreach (var cfg in _audioConfigs)
+                        {
+                            <option value="@cfg.Id">@cfg.Name</option>
+                        }
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick='() => _showAddEpisode = false'>取消</button>
+                <button class="btn btn-primary" @onclick='AddEpisode' disabled="@string.IsNullOrWhiteSpace(_newEpisodeTitle)">添加</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    [Parameter]
+    public int DramaId { get; set; }
+
+    private WuShuangDrama.Models.Drama? _drama;
+    private List<WuShuangDrama.Models.Episode> _episodes = new();
+    private int _episodeCount;
+    private bool _loading = true;
+    private string? _error;
+    private bool _showAddEpisode;
+    private string _newEpisodeTitle = "";
+    private int? _newImageConfigId;
+    private int? _newVideoConfigId;
+    private int? _newAudioConfigId;
+    private List<WuShuangDrama.Models.AiServiceConfig> _imageConfigs = new();
+    private List<WuShuangDrama.Models.AiServiceConfig> _videoConfigs = new();
+    private List<WuShuangDrama.Models.AiServiceConfig> _audioConfigs = new();
+
+    [Inject] private NavigationManager _nav { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDrama();
+        _imageConfigs = await _db.AiServiceConfigs.Where(c => c.ServiceType == "image" && c.IsActive == true).ToListAsync();
+        _videoConfigs = await _db.AiServiceConfigs.Where(c => c.ServiceType == "video" && c.IsActive == true).ToListAsync();
+        _audioConfigs = await _db.AiServiceConfigs.Where(c => c.ServiceType == "audio" && c.IsActive == true).ToListAsync();
+    }
+
+    private async Task LoadDrama()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _drama = await _db.Dramas.FirstOrDefaultAsync(d => d.Id == DramaId && d.DeletedAt == null);
+            if (_drama != null)
+            {
+                _episodes = await _db.Episodes
+                    .Where(e => e.DramaId == DramaId && e.DeletedAt == null)
+                    .OrderBy(e => e.EpisodeNumber)
+                    .ToListAsync();
+                var characterCount = await _db.Characters.CountAsync(c => c.DramaId == DramaId && c.DeletedAt == null);
+                _episodeCount = _episodes.Count;
+            }
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ShowAddEpisode()
+    {
+        _newEpisodeTitle = $"第{_episodes.Count + 1}集";
+        _newImageConfigId = null;
+        _newVideoConfigId = null;
+        _newAudioConfigId = null;
+        _showAddEpisode = true;
+    }
+
+    private async Task AddEpisode()
+    {
+        if (string.IsNullOrWhiteSpace(_newEpisodeTitle)) return;
+        var episode = new WuShuangDrama.Models.Episode
+        {
+            DramaId = DramaId,
+            EpisodeNumber = _episodes.Count + 1,
+            Title = _newEpisodeTitle,
+            Status = "draft",
+            ImageConfigId = _newImageConfigId,
+            VideoConfigId = _newVideoConfigId,
+            AudioConfigId = _newAudioConfigId,
+            CreatedAt = DateTime.UtcNow.ToString("o"),
+            UpdatedAt = DateTime.UtcNow.ToString("o"),
+        };
+        _db.Episodes.Add(episode);
+        await _db.SaveChangesAsync();
+        _showAddEpisode = false;
+        await LoadDrama();
+    }
+
+    private static string GetStatusTag(string? status) => status switch
+    {
+        "draft" => "",
+        "processing" => "tag-warning",
+        "done" => "tag-success",
+        "error" => "tag-error",
+        _ => ""
+    };
+
+    private static string FormatTime(string? iso)
+    {
+        if (iso == null) return "";
+        if (DateTime.TryParse(iso, out var dt))
+            return dt.ToString("yyyy-MM-dd HH:mm");
+        return "";
+    }
+
+    public void Dispose() { }
+}

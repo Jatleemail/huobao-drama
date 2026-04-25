@@ -1,0 +1,306 @@
+@page "/settings"
+@using Microsoft.EntityFrameworkCore
+@inject WuShuangDrama.Data.DramaDbContext _db
+@implements IDisposable
+
+<div class="page">
+    <div class="page-head">
+        <h1 class="page-title">设置</h1>
+    </div>
+
+    <div class="settings-layout">
+        <nav class="settings-nav">
+            <button class="settings-nav-item @(_activeTab == "ai" ? "active" : "")" @onclick='() => _activeTab = "ai"'>
+                AI 服务配置
+            </button>
+            <button class="settings-nav-item @(_activeTab == "agents" ? "active" : "")" @onclick='() => _activeTab = "agents"'>
+                智能体配置
+            </button>
+        </nav>
+
+        <div class="settings-content">
+            @if (_loading)
+            {
+                <div class="skeleton" style="height: 200px;"></div>
+            }
+            else if (_activeTab == "ai")
+            {
+                <div style="margin-bottom: 16px; display: flex; gap: 8px; align-items: center;">
+                    <h3 style="font-weight: 600;">AI 服务配置</h3>
+                    <button class="btn btn-sm btn-ghost" @onclick='ApplyHuobaoPreset' title="一键配置 Huobao 预设">Huobao 预设</button>
+                </div>
+
+                @foreach (var group in _configsByType)
+                {
+                    <div style="margin-bottom: 20px;">
+                        <h4 style="font-size: 0.9rem; font-weight: 600; color: var(--text-2); margin-bottom: 8px; display: flex; align-items: center; gap: 8px;">
+                            @GetServiceTypeLabel(group.Key)
+                            <button class="btn btn-ghost btn-sm" @onclick='() => ShowAddConfig(group.Key)'>+ 添加</button>
+                        </h4>
+                        @foreach (var cfg in group)
+                        {
+                            <div class="config-card">
+                                <div class="config-card-header">
+                                    <div class="config-card-title">
+                                        @cfg.Name
+                                        @if (cfg.IsDefault == true) { <span class="tag tag-accent">默认</span> }
+                                        @if (cfg.IsActive == true) { <span class="tag tag-success">启用</span> } else { <span class="tag">禁用</span> }
+                                    </div>
+                                    <div style="display: flex; gap: 4px;">
+                                        <button class="btn btn-ghost btn-sm" @onclick='() => ToggleEdit(cfg)'>编辑</button>
+                                        <button class="btn btn-ghost btn-sm btn-error" @onclick='() => DeleteConfig(cfg)'>删除</button>
+                                    </div>
+                                </div>
+                                <div>
+                                    <div class="config-field">
+                                        <label>Provider</label>
+                                        <span class="text-sm">@cfg.Provider</span>
+                                    </div>
+                                    <div class="config-field">
+                                        <label>Base URL</label>
+                                        <span class="text-sm">@cfg.BaseUrl</span>
+                                    </div>
+                                    <div class="config-field">
+                                        <label>Model</label>
+                                        <span class="text-sm text-mono">@cfg.Model</span>
+                                    </div>
+                                </div>
+                            </div>
+                        }
+                    </div>
+                }
+            }
+            else if (_activeTab == "agents")
+            {
+                <h3 style="font-weight: 600; margin-bottom: 16px;">智能体配置</h3>
+                @foreach (var agent in _agentConfigs)
+                {
+                    <div class="config-card">
+                        <div class="config-card-header">
+                            <div class="config-card-title">
+                                @agent.Name
+                                <span class="tag">@agent.AgentType</span>
+                                @if (agent.IsActive == true) { <span class="tag tag-success">启用</span> }
+                            </div>
+                            <button class="btn btn-ghost btn-sm" @onclick='() => ToggleEditAgent(agent)'>编辑</button>
+                        </div>
+                        <div>
+                            <div class="config-field">
+                                <label>Model</label>
+                                <span class="text-sm text-mono">@(agent.Model ?? "-")</span>
+                            </div>
+                            <div class="config-field">
+                                <label>Temperature</label>
+                                <span class="text-sm">@(agent.Temperature?.ToString("F2") ?? "-")</span>
+                            </div>
+                            <div class="config-field">
+                                <label>Max Tokens</label>
+                                <span class="text-sm">@(agent.MaxTokens?.ToString() ?? "-")</span>
+                            </div>
+                            <div class="config-field">
+                                <label>System Prompt</label>
+                                <span class="text-sm">@(agent.SystemPrompt?.Length > 100 ? agent.SystemPrompt[..100] + "..." : agent.SystemPrompt ?? "-")</span>
+                            </div>
+                        </div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+</div>
+
+@if (_editingConfig != null)
+{
+    <div class="overlay" @onclick='() => _editingConfig = null'>
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-title">编辑配置</div>
+            <div class="field">
+                <label>名称</label>
+                <input class="input" @bind="_editingConfig.Name" />
+            </div>
+            <div class="field">
+                <label>Provider</label>
+                <input class="input" @bind="_editingConfig.Provider" />
+            </div>
+            <div class="field">
+                <label>Base URL</label>
+                <input class="input input-mono" @bind="_editingConfig.BaseUrl" />
+            </div>
+            <div class="field">
+                <label>API Key</label>
+                <input class="input input-mono" type="password" @bind="_editingConfig.ApiKey" />
+            </div>
+            <div class="field">
+                <label>Model</label>
+                <input class="input input-mono" @bind="_editingConfig.Model" />
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>优先级</label>
+                    <input class="input" type="number" @bind="_editingConfig.Priority" />
+                </div>
+                <div class="field">
+                    <label>默认</label>
+                    <select class="input" @bind="_editingConfig.IsDefault">
+                        <option value="false">否</option>
+                        <option value="true">是</option>
+                    </select>
+                </div>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick='() => _editingConfig = null'>取消</button>
+                <button class="btn btn-primary" @onclick='SaveConfig'>保存</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_editingAgent != null)
+{
+    <div class="overlay" @onclick='() => _editingAgent = null'>
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-title">编辑智能体</div>
+            <div class="field">
+                <label>名称</label>
+                <input class="input" @bind="_editingAgent.Name" />
+            </div>
+            <div class="field">
+                <label>Model</label>
+                <input class="input input-mono" @bind="_editingAgent.Model" />
+            </div>
+            <div class="field-row">
+                <div class="field">
+                    <label>Temperature (0-2)</label>
+                    <input class="input" type="number" step="0.1" min="0" max="2" @bind="_editingAgent.Temperature" />
+                </div>
+                <div class="field">
+                    <label>Max Tokens</label>
+                    <input class="input" type="number" min="1" @bind="_editingAgent.MaxTokens" />
+                </div>
+            </div>
+            <div class="field">
+                <label>System Prompt</label>
+                <textarea class="input input-mono" rows="8" @bind="_editingAgent.SystemPrompt"></textarea>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick='() => _editingAgent = null'>取消</button>
+                <button class="btn btn-primary" @onclick='SaveAgent'>保存</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private string _activeTab = "ai";
+    private bool _loading = true;
+
+    private List<WuShuangDrama.Models.AiServiceConfig> _allConfigs = new();
+    private List<WuShuangDrama.Models.AgentConfig> _agentConfigs = new();
+    private ILookup<string?, WuShuangDrama.Models.AiServiceConfig> _configsByType => _allConfigs.ToLookup(c => c.ServiceType);
+    private WuShuangDrama.Models.AiServiceConfig? _editingConfig;
+    private WuShuangDrama.Models.AgentConfig? _editingAgent;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        try
+        {
+            _allConfigs = await _db.AiServiceConfigs.OrderBy(c => c.ServiceType).ThenBy(c => c.Priority).ToListAsync();
+            _agentConfigs = await _db.AgentConfigs.Where(c => c.DeletedAt == null).ToListAsync();
+        }
+        finally { _loading = false; }
+    }
+
+    private static string GetServiceTypeLabel(string? type) => type switch
+    {
+        "text" => "文本 (Text)",
+        "image" => "图片 (Image)",
+        "video" => "视频 (Video)",
+        "audio" => "音频 (Audio)",
+        _ => type ?? "其他"
+    };
+
+    private void ShowAddConfig(string serviceType)
+    {
+        _editingConfig = new WuShuangDrama.Models.AiServiceConfig
+        {
+            ServiceType = serviceType,
+            Name = "新建配置",
+            Provider = "openai",
+            BaseUrl = "https://api.openai.com/v1",
+            ApiKey = "",
+            Model = "gpt-4o",
+            IsActive = true,
+            CreatedAt = DateTime.UtcNow.ToString("o"),
+            UpdatedAt = DateTime.UtcNow.ToString("o"),
+        };
+    }
+
+    private void ToggleEdit(WuShuangDrama.Models.AiServiceConfig cfg)
+    {
+        _editingConfig = cfg;
+    }
+
+    private async Task SaveConfig()
+    {
+        if (_editingConfig == null) return;
+        _editingConfig.UpdatedAt = DateTime.UtcNow.ToString("o");
+        if (_editingConfig.Id == 0) _db.AiServiceConfigs.Add(_editingConfig);
+        await _db.SaveChangesAsync();
+        _editingConfig = null;
+        await LoadData();
+    }
+
+    private async Task DeleteConfig(WuShuangDrama.Models.AiServiceConfig cfg)
+    {
+        _db.AiServiceConfigs.Remove(cfg);
+        await _db.SaveChangesAsync();
+        await LoadData();
+    }
+
+    private void ToggleEditAgent(WuShuangDrama.Models.AgentConfig agent)
+    {
+        _editingAgent = agent;
+    }
+
+    private async Task SaveAgent()
+    {
+        if (_editingAgent == null) return;
+        _editingAgent.UpdatedAt = DateTime.UtcNow.ToString("o");
+        if (_editingAgent.Id == 0) _db.AgentConfigs.Add(_editingAgent);
+        await _db.SaveChangesAsync();
+        _editingAgent = null;
+        await LoadData();
+    }
+
+    private async Task ApplyHuobaoPreset()
+    {
+        var hut = new WuShuangDrama.Models.AiServiceConfig
+        {
+            ServiceType = "text", Name = "Huobao Text", Provider = "openai",
+            BaseUrl = "https://api.huoao.com/v1", ApiKey = "", Model = "gpt-4o",
+            IsDefault = true, IsActive = true, Priority = 0,
+            CreatedAt = DateTime.UtcNow.ToString("o"), UpdatedAt = DateTime.UtcNow.ToString("o"),
+        };
+        _db.AiServiceConfigs.Add(hut);
+
+        var hui = new WuShuangDrama.Models.AiServiceConfig
+        {
+            ServiceType = "image", Name = "Huobao Image", Provider = "openai",
+            BaseUrl = "https://api.huoao.com/v1", ApiKey = "", Model = "dall-e-3",
+            IsDefault = true, IsActive = true, Priority = 0,
+            CreatedAt = DateTime.UtcNow.ToString("o"), UpdatedAt = DateTime.UtcNow.ToString("o"),
+        };
+        _db.AiServiceConfigs.Add(hui);
+
+        await _db.SaveChangesAsync();
+        await LoadData();
+    }
+
+    public void Dispose() { }
+}

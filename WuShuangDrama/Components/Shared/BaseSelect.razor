@@ -1,0 +1,49 @@
+@* Searchable select dropdown *@
+
+<div class="field" @attributes="AdditionalAttributes">
+    @if (!string.IsNullOrEmpty(Label))
+    {
+        <label>@Label</label>
+    }
+    <select class="input" @bind="SelectedValue" @bind:after="OnValueChanged">
+        @if (!string.IsNullOrEmpty(Placeholder))
+        {
+            <option value="">@Placeholder</option>
+        }
+        @foreach (var opt in Options)
+        {
+            <option value="@opt.Value">@opt.Text</option>
+        }
+    </select>
+</div>
+
+@code {
+    [Parameter]
+    public string? Label { get; set; }
+
+    [Parameter]
+    public string? Placeholder { get; set; }
+
+    [Parameter]
+    public string? SelectedValue { get; set; }
+
+    [Parameter]
+    public EventCallback<string?> SelectedValueChanged { get; set; }
+
+    [Parameter]
+    public List<SelectOption> Options { get; set; } = new();
+
+    [Parameter(CaptureUnmatchedValues = true)]
+    public Dictionary<string, object?>? AdditionalAttributes { get; set; }
+
+    private async Task OnValueChanged()
+    {
+        await SelectedValueChanged.InvokeAsync(SelectedValue);
+    }
+
+    public class SelectOption
+    {
+        public string Value { get; set; } = "";
+        public string Text { get; set; } = "";
+    }
+}

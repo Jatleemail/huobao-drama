@@ -1,0 +1,28 @@
+@* Empty state display component *@
+
+<div class="empty-state">
+    @if (!string.IsNullOrEmpty(Icon))
+    {
+        <div class="empty-state-icon">@Icon</div>
+    }
+    <div class="empty-state-title">@Title</div>
+    @if (!string.IsNullOrEmpty(Description))
+    {
+        <div class="empty-state-desc">@Description</div>
+    }
+    @ChildContent
+</div>
+
+@code {
+    [Parameter]
+    public string? Icon { get; set; }
+
+    [Parameter]
+    public string Title { get; set; } = "暂无数据";
+
+    [Parameter]
+    public string? Description { get; set; }
+
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+}

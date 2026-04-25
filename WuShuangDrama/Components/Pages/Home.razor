@@ -1,0 +1,220 @@
+@page "/"
+@using Microsoft.EntityFrameworkCore
+@inject WuShuangDrama.Data.DramaDbContext _db
+@implements IDisposable
+
+<div class="page">
+    <div class="page-head">
+        <div>
+            <h1 class="page-title">项目</h1>
+            <p class="page-desc">管理你的 AI 短剧项目</p>
+        </div>
+        <button class="btn btn-primary" @onclick="ShowCreateModal">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19" /><line x1="5" y1="12" x2="19" y2="12" /></svg>
+            新建项目
+        </button>
+    </div>
+
+    @if (_loading)
+    {
+        <div class="grid grid-3">
+            @for (int i = 0; i < 6; i++)
+            {
+                <div class="card">
+                    <div class="skeleton" style="height: 16px; width: 60%; margin-bottom: 12px;"></div>
+                    <div class="skeleton" style="height: 12px; width: 40%; margin-bottom: 8px;"></div>
+                    <div class="skeleton" style="height: 12px; width: 80%;"></div>
+                </div>
+            }
+        </div>
+    }
+    else if (_error != null)
+    {
+        <div class="empty-state">
+            <div class="empty-state-title">加载失败</div>
+            <div class="empty-state-desc">@_error</div>
+            <button class="btn btn-primary mt-3" @onclick="LoadDramas">重试</button>
+        </div>
+    }
+    else if (_dramas.Count == 0)
+    {
+        <EmptyState Icon="🎬" Title="还没有项目" Description="创建一个新的 AI 短剧项目开始制作">
+            <button class="btn btn-primary" @onclick="ShowCreateModal">新建项目</button>
+        </EmptyState>
+    }
+    else
+    {
+        <div class="grid grid-3">
+            @foreach (var drama in _dramas)
+            {
+                <div class="card" style="cursor: pointer;" @onclick="() => NavigateToDrama(drama.Id)">
+                    <div class="card-header">
+                        <span class="card-title truncate">@drama.Title</span>
+                        <span class="tag tag-accent">@drama.Style</span>
+                    </div>
+                    <div class="text-sm text-muted" style="margin-bottom: 12px; display: flex; gap: 12px;">
+                        <span>@(drama.TotalEpisodes ?? 1) 集</span>
+                        <span>@drama.Status</span>
+                    </div>
+                    <div style="display: flex; align-items: center; justify-content: space-between;">
+                        <span class="text-xs text-muted">@FormatTime(drama.UpdatedAt)</span>
+                        <button class="btn btn-ghost btn-icon btn-sm" @onclick:stopPropagation @onclick="() => ConfirmDelete(drama)">
+                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--error)" stroke-width="2" stroke-linecap="round"><polyline points="3 6 5 6 21 6" /><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" /></svg>
+                        </button>
+                    </div>
+                </div>
+            }
+        </div>
+    }
+</div>
+
+@if (_showCreateModal)
+{
+    <div class="overlay" @onclick="CancelCreate">
+        <div class="modal" @onclick:stopPropagation>
+            <div class="modal-title">新建项目</div>
+            <div class="field">
+                <label>项目名称</label>
+                <input class="input" @bind="_newTitle" placeholder="输入项目名称" />
+            </div>
+            <div class="field">
+                <label>集数</label>
+                <input class="input" type="number" min="1" max="99" @bind="_newEpisodes" />
+            </div>
+            <div class="field">
+                <label>风格</label>
+                <select class="input" @bind="_newStyle">
+                    <option value="realistic">写实</option>
+                    <option value="anime">动漫</option>
+                    <option value="fantasy">玄幻</option>
+                    <option value="sci-fi">科幻</option>
+                    <option value="comedy">喜剧</option>
+                </select>
+            </div>
+            <div class="modal-actions">
+                <button class="btn" @onclick="CancelCreate">取消</button>
+                <button class="btn btn-primary" @onclick="CreateDrama" disabled="@string.IsNullOrWhiteSpace(_newTitle)">创建</button>
+            </div>
+        </div>
+    </div>
+}
+
+@if (_deleteTarget != null)
+{
+    <div class="dialog-mask" @onclick="() => _deleteTarget = null">
+        <div class="dialog" @onclick:stopPropagation>
+            <div class="dialog-title">删除项目</div>
+            <div class="dialog-text">确定要删除「@_deleteTarget.Title」吗？此操作不可撤销。</div>
+            <div class="dialog-actions">
+                <button class="btn" @onclick="() => _deleteTarget = null">取消</button>
+                <button class="btn btn-error" @onclick="DeleteDrama">删除</button>
+            </div>
+        </div>
+    </div>
+}
+
+@code {
+    private List<WuShuangDrama.Models.Drama> _dramas = new();
+    private bool _loading = true;
+    private string? _error;
+    private bool _showCreateModal;
+    private string _newTitle = "";
+    private int _newEpisodes = 1;
+    private string _newStyle = "realistic";
+    private WuShuangDrama.Models.Drama? _deleteTarget;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDramas();
+    }
+
+    private async Task LoadDramas()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            _dramas = await _db.Dramas
+                .Where(d => d.DeletedAt == null)
+                .OrderByDescending(d => d.UpdatedAt)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            _error = ex.Message;
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void ShowCreateModal()
+    {
+        _newTitle = "";
+        _newEpisodes = 1;
+        _newStyle = "realistic";
+        _showCreateModal = true;
+    }
+
+    private void CancelCreate()
+    {
+        _showCreateModal = false;
+    }
+
+    private async Task CreateDrama()
+    {
+        if (string.IsNullOrWhiteSpace(_newTitle)) return;
+        var drama = new WuShuangDrama.Models.Drama
+        {
+            Title = _newTitle,
+            TotalEpisodes = _newEpisodes,
+            Style = _newStyle,
+            Status = "draft",
+            CreatedAt = DateTime.UtcNow.ToString("o"),
+            UpdatedAt = DateTime.UtcNow.ToString("o"),
+        };
+        _db.Dramas.Add(drama);
+        await _db.SaveChangesAsync();
+        _showCreateModal = false;
+        await LoadDramas();
+    }
+
+    private void ConfirmDelete(WuShuangDrama.Models.Drama drama)
+    {
+        _deleteTarget = drama;
+    }
+
+    private async Task DeleteDrama()
+    {
+        if (_deleteTarget == null) return;
+        _deleteTarget.DeletedAt = DateTime.UtcNow.ToString("o");
+        await _db.SaveChangesAsync();
+        _deleteTarget = null;
+        await LoadDramas();
+    }
+
+    private void NavigateToDrama(int id)
+    {
+        _nav.NavigateTo($"/drama/{id}");
+    }
+
+    private static string FormatTime(string? iso)
+    {
+        if (iso == null) return "";
+        if (DateTime.TryParse(iso, out var dt))
+        {
+            var diff = DateTime.UtcNow - dt;
+            if (diff.TotalMinutes < 1) return "刚刚";
+            if (diff.TotalHours < 1) return $"{(int)diff.TotalMinutes} 分钟前";
+            if (diff.TotalDays < 1) return $"{(int)diff.TotalHours} 小时前";
+            if (diff.TotalDays < 30) return $"{(int)diff.TotalDays} 天前";
+            return dt.ToString("yyyy-MM-dd");
+        }
+        return "";
+    }
+
+    [Inject] private NavigationManager _nav { get; set; } = default!;
+
+    public void Dispose() { }
+}

@@ -1,0 +1,463 @@
+@page "/drama/{DramaId:int}/episode/{EpisodeNumber:int}"
+@using Microsoft.EntityFrameworkCore
+@inject WuShuangDrama.Data.DramaDbContext _db
+@implements IDisposable
+
+<div class="workbench-topbar">
+    <button class="back-btn" @onclick='() => _nav.NavigateTo($"/drama/{DramaId}")'>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="15 18 9 12 15 6" /></svg>
+        返回
+    </button>
+    <span style="font-weight: 600;">@_dramaTitle</span>
+    <span class="tag tag-accent">第 @EpisodeNumber 集</span>
+    <span class="text-xs text-muted">@_episodeTitle</span>
+    <div class="navbar-spacer"></div>
+    <button class="btn btn-ghost btn-sm" @onclick='RefreshData' title="刷新">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polyline points="23 4 23 10 17 10" /><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" /></svg>
+        刷新
+    </button>
+    <button class="btn btn-primary btn-sm" disabled="@(_activeStepIndex < _steps.Count - 1)">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><polygon points="5 3 19 12 5 21 5 3" /></svg>
+        生产
+    </button>
+</div>
+
+<div class="workbench">
+    <nav class="sidebar">
+        @foreach (var section in _sections)
+        {
+            <div class="sidebar-section">
+                <div class="sidebar-section-title">@(section.Name)</div>
+                @foreach (var step in section.Steps)
+                {
+                    var s = step;
+                    <div class="sidebar-item @(s == _activeStep ? "active" : "")" @onclick='() => SetActiveStep(s)'>
+                        <span class="status-dot @GetStepStatusClass(s)"></span>
+                        <span class="sidebar-item-text">@s.Label</span>
+                    </div>
+                }
+            </div>
+        }
+    </nav>
+
+    <div class="workbench-main">
+        @if (_loading)
+        {
+            <div class="panel">
+                <div class="skeleton" style="height:24px;width:40%;margin-bottom:16px"></div>
+                <div class="skeleton" style="height:200px"></div>
+            </div>
+        }
+        else if (_error != null)
+        {
+            <div class="empty-state">
+                <div class="empty-state-title">加载失败</div>
+                <div class="empty-state-desc">@_error</div>
+            </div>
+        }
+        else if (_activeStep?.Key == "script_rewrite")
+        {
+            @* Script rewrite panel *@
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">剧本改写</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("script_rewrite")'>AI 改写</button>
+                    </div>
+                </div>
+                <div class="field">
+                    <textarea class="input input-mono" rows="15" @bind="_episodeContent"></textarea>
+                </div>
+            </div>
+        }
+        else if (_activeStep?.Key == "extract_characters")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">提取角色</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("extract_characters")'>AI 提取</button>
+                    </div>
+                </div>
+                @if (_characters.Count == 0)
+                {
+                    <div class="text-sm text-muted">暂无角色，点击 AI 提取从剧本中识别角色。</div>
+                }
+                @foreach (var c in _characters)
+                {
+                    <div class="storyboard-card">
+                        <div class="storyboard-header">
+                            <div class="storyboard-number">@(c.Name.Length > 0 ? c.Name[..1] : "?")</div>
+                            <div class="storyboard-info">
+                                <div class="storyboard-title">@c.Name</div>
+                                <div class="storyboard-meta">@c.Role</div>
+                            </div>
+                        </div>
+                        <div class="storyboard-body">@c.Appearance</div>
+                    </div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "assign_voices")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">分配音色</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("assign_voices")'>AI 分配</button>
+                    </div>
+                </div>
+                @foreach (var c in _characters)
+                {
+                    <div class="storyboard-card">
+                        <div class="storyboard-header">
+                            <div class="storyboard-title">@c.Name</div>
+                            <div class="text-sm text-muted">@(c.VoiceStyle ?? "未分配")</div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "generate_voice_samples")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">生成语音样本</h2>
+                </div>
+                @foreach (var c in _characters)
+                {
+                    <div class="storyboard-card">
+                        <div class="storyboard-header">
+                            <div class="storyboard-title">@c.Name</div>
+                            <div class="storyboard-actions">
+                                <button class="btn btn-sm btn-primary">生成样本</button>
+                                @if (!string.IsNullOrEmpty(c.VoiceSampleUrl))
+                                {
+                                    <button class="btn btn-sm">▶ 播放</button>
+                                }
+                            </div>
+                        </div>
+                    </div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "extract_scenes")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">提取场景</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("extract_scenes")'>AI 提取</button>
+                    </div>
+                </div>
+                @if (_scenes.Count == 0)
+                {
+                    <div class="text-sm text-muted">暂无场景，点击 AI 提取生成场景。</div>
+                }
+                @foreach (var s in _scenes)
+                {
+                    <div class="storyboard-card">
+                        <div class="storyboard-header">
+                            <div class="storyboard-title">@s.Location - @s.Time</div>
+                        </div>
+                        <div class="storyboard-body">@s.Prompt</div>
+                    </div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "extract_storyboards")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">提取分镜</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("extract_storyboards")'>AI 提取</button>
+                    </div>
+                </div>
+                @if (_storyboards.Count == 0)
+                {
+                    <div class="text-sm text-muted">暂无分镜，点击 AI 提取生成分镜。</div>
+                }
+                @foreach (var sb in _storyboards)
+                {
+                    <div class="storyboard-card">
+                        <div class="storyboard-header">
+                            <div class="storyboard-number">@sb.StoryboardNumber</div>
+                            <div class="storyboard-info">
+                                <div class="storyboard-title">@sb.Title</div>
+                                <div class="storyboard-meta">@sb.ShotType</div>
+                            </div>
+                        </div>
+                        @if (!string.IsNullOrEmpty(sb.Dialogue))
+                        {
+                            <div class="storyboard-body">@sb.Dialogue</div>
+                        }
+                    </div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "rate_scenes")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">评分场景</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("rate_scenes")'>AI 评分</button>
+                    </div>
+                </div>
+                <div class="text-sm text-muted">AI 将对每个分镜进行质量评分和反馈。</div>
+            </div>
+        }
+        else if (_activeStep?.Key == "generate_images")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">生成图片</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("generate_images")'>批量生成</button>
+                    </div>
+                </div>
+                @if (_images.Count > 0)
+                {
+                    <div class="image-grid">
+                        @foreach (var img in _images.Take(20))
+                        {
+                            <div class="image-cell">
+                                @if (!string.IsNullOrEmpty(img.ImageUrl))
+                                {
+                                    <img src="@img.ImageUrl" alt="" />
+                                }
+                                <div class="image-cell-label">@(img.FrameType ?? img.Status ?? "")</div>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-sm text-muted">暂无图片，请先生成分镜图。</div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "generate_videos")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">生成视频</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("generate_videos")'>批量生成</button>
+                    </div>
+                </div>
+                @if (_videos.Count > 0)
+                {
+                    <div class="grid grid-3">
+                        @foreach (var v in _videos.Take(12))
+                        {
+                            <div class="card">
+                                <div class="text-sm">分镜 @v.StoryboardId</div>
+                                <span class="tag mt-2">@v.Status</span>
+                            </div>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="text-sm text-muted">暂无视频，请先生成图片后再生成视频。</div>
+                }
+            </div>
+        }
+        else if (_activeStep?.Key == "compose_shots")
+        {
+            var composed = _storyboards.Count(s => !string.IsNullOrEmpty(s.ComposedVideoUrl));
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">合成镜头</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("compose_shots")'>批量合成</button>
+                    </div>
+                </div>
+                <div class="text-sm text-muted">
+                    @if (composed > 0)
+                    {
+                        <span>已合成 @composed/@_storyboards.Count 个镜头</span>
+                    }
+                    else
+                    {
+                        <span>暂无合成视频。</span>
+                    }
+                </div>
+            </div>
+        }
+        else if (_activeStep?.Key == "merge_episode")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">合并片段</h2>
+                    <div class="panel-actions">
+                        <button class="btn btn-primary" @onclick='() => RunAgent("merge_episode")'>开始合并</button>
+                    </div>
+                </div>
+            </div>
+        }
+        else if (_activeStep?.Key == "export_result")
+        {
+            <div class="panel">
+                <div class="panel-header">
+                    <h2 class="panel-title">导出结果</h2>
+                </div>
+                <div class="empty-state">
+                    <div class="empty-state-icon">✅</div>
+                    <div class="empty-state-title">制作完成</div>
+                    <div class="empty-state-desc">所有步骤已完成，可以查看最终视频。</div>
+                </div>
+            </div>
+        }
+    </div>
+</div>
+
+@code {
+    [Parameter] public int DramaId { get; set; }
+    [Parameter] public int EpisodeNumber { get; set; }
+
+    private string _dramaTitle = "";
+    private string _episodeTitle = "";
+    private int _episodeId;
+    private bool _loading = true;
+    private string? _error;
+    private string _episodeContent = "";
+
+    private PipelineStep? _activeStep;
+    private int _activeStepIndex;
+    private Timer? _pollTimer;
+
+    private List<WuShuangDrama.Models.Character> _characters = new();
+    private List<WuShuangDrama.Models.Scene> _scenes = new();
+    private List<WuShuangDrama.Models.Storyboard> _storyboards = new();
+    private List<WuShuangDrama.Models.ImageGeneration> _images = new();
+    private List<WuShuangDrama.Models.VideoGeneration> _videos = new();
+
+    private readonly List<PipelineSection> _sections = new()
+    {
+        new("1. 剧本", new List<PipelineStep> { new("script_rewrite", "剧本改写") }),
+        new("2. 角色", new List<PipelineStep> { new("extract_characters", "提取角色"), new("assign_voices", "分配音色"), new("generate_voice_samples", "生成语音样本") }),
+        new("3. 场景", new List<PipelineStep> { new("extract_scenes", "提取场景") }),
+        new("4. 分镜", new List<PipelineStep> { new("extract_storyboards", "提取分镜"), new("rate_scenes", "评分场景") }),
+        new("5. 图片", new List<PipelineStep> { new("generate_images", "生成图片") }),
+        new("6. 视频", new List<PipelineStep> { new("generate_videos", "生成视频") }),
+        new("7. 合成", new List<PipelineStep> { new("compose_shots", "合成镜头") }),
+        new("8. 导出", new List<PipelineStep> { new("merge_episode", "合并片段"), new("export_result", "导出结果") }),
+    };
+
+    private List<PipelineStep> _steps => _sections.SelectMany(s => s.Steps).ToList();
+
+    [Inject] private NavigationManager _nav { get; set; } = default!;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadData();
+        _activeStep ??= _steps.FirstOrDefault();
+        _activeStepIndex = _activeStep != null ? _steps.IndexOf(_activeStep) : 0;
+        _pollTimer = new Timer(async _ => await PollStatus(), null, TimeSpan.FromSeconds(10), TimeSpan.FromSeconds(10));
+    }
+
+    private async Task LoadData()
+    {
+        _loading = true;
+        _error = null;
+        try
+        {
+            var drama = await _db.Dramas.FirstOrDefaultAsync(d => d.Id == DramaId);
+            _dramaTitle = drama?.Title ?? "未知项目";
+
+            var episode = await _db.Episodes.FirstOrDefaultAsync(e => e.DramaId == DramaId && e.EpisodeNumber == EpisodeNumber && e.DeletedAt == null);
+            if (episode != null)
+            {
+                _episodeId = episode.Id;
+                _episodeTitle = episode.Title;
+                _episodeContent = episode.ScriptContent ?? episode.Content ?? "";
+            }
+            else _error = "未找到该片段";
+
+            _characters = await _db.Characters.Where(c => c.DramaId == DramaId && c.DeletedAt == null).ToListAsync();
+            _scenes = await _db.Scenes.Where(s => s.EpisodeId == _episodeId && s.DeletedAt == null).ToListAsync();
+            _storyboards = await _db.Storyboards.Where(s => s.EpisodeId == _episodeId && s.DeletedAt == null).OrderBy(s => s.StoryboardNumber).ToListAsync();
+
+            var sbIds = _storyboards.Select(s => s.Id).ToList();
+            if (sbIds.Any())
+            {
+                _images = await _db.ImageGenerations.Where(i => i.StoryboardId != null && sbIds.Contains(i.StoryboardId.Value)).ToListAsync();
+                _videos = await _db.VideoGenerations.Where(v => v.StoryboardId != null && sbIds.Contains(v.StoryboardId.Value)).ToListAsync();
+            }
+        }
+        catch (Exception ex) { _error = ex.Message; }
+        finally { _loading = false; }
+    }
+
+    private async Task PollStatus()
+    {
+        try
+        {
+            var episode = await _db.Episodes.FirstOrDefaultAsync(e => e.Id == _episodeId);
+            if (episode == null) return;
+
+            foreach (var step in _steps)
+            {
+                step.Status = step.Key switch
+                {
+                    "script_rewrite" => string.IsNullOrEmpty(episode.ScriptContent) ? "pending" : "done",
+                    "extract_characters" => _characters.Any() ? "done" : "pending",
+                    "assign_voices" => _characters.Any(c => !string.IsNullOrEmpty(c.VoiceStyle)) ? "done" : "pending",
+                    "generate_voice_samples" => _characters.Any(c => !string.IsNullOrEmpty(c.VoiceSampleUrl)) ? "done" : "pending",
+                    "extract_scenes" => _scenes.Any() ? "done" : "pending",
+                    "extract_storyboards" => _storyboards.Any() ? "done" : "pending",
+                    "rate_scenes" => "pending",
+                    "generate_images" => _images.Any(i => i.Status == "done") ? "done" : _images.Any() ? "partial" : "pending",
+                    "generate_videos" => _videos.Any(v => v.Status == "done") ? "done" : _videos.Any() ? "partial" : "pending",
+                    "compose_shots" => _storyboards.Any(s => !string.IsNullOrEmpty(s.ComposedVideoUrl)) ? "done" : "pending",
+                    "merge_episode" => _db.VideoMerges.Any(m => m.EpisodeId == _episodeId && m.Status == "done") ? "done" : "pending",
+                    "export_result" => !string.IsNullOrEmpty(episode.VideoUrl) ? "done" : "pending",
+                    _ => "pending"
+                };
+            }
+            await InvokeAsync(StateHasChanged);
+        }
+        catch { }
+    }
+
+    private void SetActiveStep(PipelineStep step)
+    {
+        _activeStep = step;
+        _activeStepIndex = _steps.IndexOf(step);
+    }
+
+    private async Task RefreshData()
+    {
+        await LoadData();
+        await PollStatus();
+    }
+
+    private async Task RunAgent(string stepKey)
+    {
+        var step = _steps.FirstOrDefault(s => s.Key == stepKey);
+        if (step == null) return;
+        step.Status = "processing";
+        await Task.Delay(1500);
+        await PollStatus();
+    }
+
+    private static string GetStepStatusClass(PipelineStep step) => step.Status switch
+    {
+        "done" => "done",
+        "processing" or "partial" => "processing",
+        "error" => "error",
+        _ => "pending"
+    };
+
+    public void Dispose() { _pollTimer?.Dispose(); }
+
+    public record PipelineStep(string Key, string Label)
+    {
+        public string Status { get; set; } = "pending";
+    }
+
+    public record PipelineSection(string Name, List<PipelineStep> Steps);
+}
