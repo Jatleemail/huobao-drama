@@ -27,13 +27,19 @@ export async function generateImage(params: GenerateImageParams): Promise<number
     : getActiveConfig('image')
   if (!config) throw new Error('No active image AI config')
 
+  const model = params.model || config.model
+  if (!model) throw new Error('未配置生图模型，请在设置中为图片服务配置模型名称')
+
+  // 提前校验：provider 是否支持图片生成，避免插入记录后才发现不支持
+  getImageAdapter(config.provider)
+
   const res = db.insert(schema.imageGenerations).values({
     storyboardId: params.storyboardId,
     dramaId: params.dramaId,
     sceneId: params.sceneId,
     characterId: params.characterId,
     prompt: params.prompt,
-    model: params.model || config.model,
+    model,
     provider: config.provider,
     size: params.size || '1920x1080',
     frameType: params.frameType,
@@ -51,7 +57,7 @@ export async function generateImage(params: GenerateImageParams): Promise<number
     sceneId: params.sceneId,
     characterId: params.characterId,
     frameType: params.frameType,
-    model: params.model || config.model,
+    model,
   })
   logTaskPayload('ImageTask', 'enqueue params', {
     id: lastId,

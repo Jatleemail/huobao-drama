@@ -2478,13 +2478,14 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))
 }
 
-function watchAsyncResult(check, attempts = 24, delay = 2500) {
+function watchAsyncResult(check, attempts = 24, delay = 2500, onTimeout) {
   void (async () => {
     for (let i = 0; i < attempts; i++) {
       await sleep(delay)
       await refresh()
       if (check()) return
     }
+    onTimeout?.()
   })()
 }
 
@@ -2499,6 +2500,9 @@ async function genCharImg(id) {
       const done = !!(char?.image_url || char?.imageUrl)
       if (done) pendingCharImageIds.value = pendingCharImageIds.value.filter(item => item !== id)
       return done
+    }, 24, 2500, () => {
+      pendingCharImageIds.value = pendingCharImageIds.value.filter(item => item !== id)
+      toast.error('角色图片生成超时，请检查生图服务配置或稍后重试')
     })
   } catch (e) {
     pendingCharImageIds.value = pendingCharImageIds.value.filter(item => item !== id)
@@ -2517,7 +2521,10 @@ function batchCharImages() {
       const done = !!(char?.image_url || char?.imageUrl)
       if (done) pendingCharImageIds.value = pendingCharImageIds.value.filter(item => item !== id)
       return done
-    }), 36)
+    }), 36, 2500, () => {
+      ids.forEach(id => pendingCharImageIds.value = pendingCharImageIds.value.filter(item => item !== id))
+      toast.error('部分角色图片生成超时，请检查生图服务配置或稍后重试')
+    })
   }).catch(e => {
     pendingCharImageIds.value = pendingCharImageIds.value.filter(item => !ids.includes(item))
     toast.error(e.message)
@@ -2534,6 +2541,9 @@ async function genSceneImg(id) {
       const done = !!(scene?.image_url || scene?.imageUrl)
       if (done) pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
       return done
+    }, 24, 2500, () => {
+      pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
+      toast.error('场景图片生成超时，请检查生图服务配置或稍后重试')
     })
   } catch (e) {
     pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
@@ -2551,7 +2561,10 @@ function batchSceneImages() {
     const done = !!(scene?.image_url || scene?.imageUrl)
     if (done) pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
     return done
-  }), 36)
+  }), 36, 2500, () => {
+    ids.forEach(id => pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id))
+    toast.error('部分场景图片生成超时，请检查生图服务配置或稍后重试')
+  })
 }
 
 const IGNORE_TTS_SPEAKERS = /^(环境音|环境声|音效|效果音|sfx|sound ?effect|bgm|背景音|背景音乐|ambient)$/i
@@ -2690,6 +2703,9 @@ async function genShotFrame(sb, frameType) {
       const done = frameType === 'first_frame' ? !!getFirstFrame(target) : !!getLastFrame(target)
       if (done) pendingShotFrameKeys.value = pendingShotFrameKeys.value.filter(item => item !== key)
       return done
+    }, 24, 2500, () => {
+      pendingShotFrameKeys.value = pendingShotFrameKeys.value.filter(item => item !== key)
+      toast.error(`${frameType === 'first_frame' ? '首帧' : '尾帧'}生成超时，请检查生图服务配置或稍后重试`)
     })
   } catch (e) {
     pendingShotFrameKeys.value = pendingShotFrameKeys.value.filter(item => item !== key)
