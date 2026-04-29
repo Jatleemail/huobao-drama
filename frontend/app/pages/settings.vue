@@ -18,7 +18,8 @@
       </div>
       <div v-if="showAdvanced" class="nav-group">
         <div class="nav-group-label">高级</div>
-        <button v-for="t in advancedTabs" :key="t.id" :class="['nav-item', { active: tab === t.id }]" @click="tab = t.id">
+        <button v-for="t in advancedTabs" :key="t.id" :class="['nav-item', { active: tab === t.id }]"
+          @click="tab = t.id">
           <component :is="t.icon" :size="14" />
           {{ t.label }}
         </button>
@@ -32,12 +33,13 @@
         <div class="settings-head">
           <div class="settings-brand">
             <div class="settings-brand-mark">
-              <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="settings-brand-logo" @error="showBrandImage = false" />
-              <span v-else class="settings-brand-fallback">火</span>
+              <img v-if="showBrandImage" :src="brandLogo" alt="无双漫剧" class="settings-brand-logo"
+                @error="showBrandImage = false" />
+              <span v-else class="settings-brand-fallback">双</span>
             </div>
             <div class="settings-brand-copy">
-              <div class="settings-brand-kicker">Huobao Shorts</div>
-              <div class="settings-brand-name">火宝短剧</div>
+              <div class="settings-brand-kicker">Wushuang</div>
+              <div class="settings-brand-name">无双漫剧</div>
             </div>
           </div>
           <h2 class="settings-title">AI 服务配置</h2>
@@ -47,11 +49,11 @@
           <div class="setup-panel-head">
             <div>
               <div class="setup-kicker">Quick Setup</div>
-              <div class="setup-title">火宝推荐配置</div>
+              <div class="setup-title">无双推荐配置</div>
               <div class="setup-desc">一键写入文本、图片、视频、音频四类推荐配置，适合作为开箱默认方案。</div>
             </div>
             <button class="btn btn-primary" @click="presetDialog = true">
-              <Sparkles :size="14" /> 火宝一键配置
+              <Sparkles :size="14" /> 无双一键配置
             </button>
           </div>
           <div class="preset-grid">
@@ -73,12 +75,7 @@
             </div>
           </div>
           <div class="template-row">
-            <button
-              v-for="st in serviceTypes"
-              :key="st.type"
-              class="template-type-chip"
-              @click="startAddCfg(st.type)"
-            >
+            <button v-for="st in serviceTypes" :key="st.type" class="template-type-chip" @click="startAddCfg(st.type)">
               {{ st.label }}
             </button>
           </div>
@@ -91,7 +88,9 @@
                 <div class="section-subtitle">{{ serviceMeta[st.type].desc }}</div>
               </div>
               <span v-if="countActive(st.type)" class="tag tag-accent">{{ countActive(st.type) }} 已启用</span>
-              <button class="btn btn-ghost btn-sm ml-auto" @click="startAddCfg(st.type)"><Plus :size="13" /> 添加</button>
+              <button class="btn btn-ghost btn-sm ml-auto" @click="startAddCfg(st.type)">
+                <Plus :size="13" /> 添加
+              </button>
             </div>
             <div class="config-list">
               <div v-for="c in byType(st.type)" :key="c.id" class="card config-row">
@@ -107,9 +106,14 @@
                 </div>
                 <span :class="['tag', c.api_key ? 'tag-success' : 'tag-error']">{{ c.api_key ? '已配置' : '无密钥' }}</span>
                 <button class="btn btn-ghost btn-sm" @click="testExistingCfg(c)">测试</button>
-                <label class="toggle"><input type="checkbox" :checked="c.is_active" @change="toggleCfg(c)"><span /></label>
-                <button class="btn btn-ghost btn-icon" @click="startEditCfg(c)"><Pencil :size="13" /></button>
-                <button class="btn btn-ghost btn-icon" @click="delCfg(c.id)"><Trash2 :size="13" /></button>
+                <label class="toggle"><input type="checkbox" :checked="c.is_active"
+                    @change="toggleCfg(c)"><span /></label>
+                <button class="btn btn-ghost btn-icon" @click="startEditCfg(c)">
+                  <Pencil :size="13" />
+                </button>
+                <button class="btn btn-ghost btn-icon" @click="delCfg(c.id)">
+                  <Trash2 :size="13" />
+                </button>
               </div>
               <p v-if="!byType(st.type).length" class="config-empty">暂无配置</p>
             </div>
@@ -122,7 +126,8 @@
         <div class="settings-head">
           <div class="settings-brand">
             <div class="settings-brand-mark">
-              <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="settings-brand-logo" @error="showBrandImage = false" />
+              <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="settings-brand-logo"
+                @error="showBrandImage = false" />
               <span v-else class="settings-brand-fallback">火</span>
             </div>
             <div class="settings-brand-copy">
@@ -143,17 +148,20 @@
               </div>
               <span v-if="getAgentCfg(a.type)" class="tag tag-success">已配置</span>
               <span v-else class="tag">默认</span>
-              <ChevronDown :size="14" :style="{ transform: editingAgent === a.type ? 'rotate(180deg)' : '', transition: '0.2s' }" />
+              <ChevronDown :size="14"
+                :style="{ transform: editingAgent === a.type ? 'rotate(180deg)' : '', transition: '0.2s' }" />
             </div>
             <div v-if="editingAgent === a.type" class="agent-card-body">
               <label class="field">
                 <span class="field-label">模型 <span class="dim">(留空使用 AI 服务默认)</span></span>
-                <BaseSelect v-model="agentForm.model" :options="textModelSelectOptions" placeholder="— 使用 AI 服务默认 —" searchable />
+                <BaseSelect v-model="agentForm.model" :options="textModelSelectOptions" placeholder="— 使用 AI 服务默认 —"
+                  searchable />
               </label>
               <div class="field-row">
                 <label class="field">
                   <span class="field-label">Temperature</span>
-                  <input v-model.number="agentForm.temperature" class="input" type="number" min="0" max="2" step="0.1" />
+                  <input v-model.number="agentForm.temperature" class="input" type="number" min="0" max="2"
+                    step="0.1" />
                 </label>
                 <label class="field">
                   <span class="field-label">Max Tokens</span>
@@ -184,12 +192,8 @@
         <!-- Agent 左侧列表 -->
         <aside class="skills-agent-list">
           <div class="skills-agent-title">Agent 列表</div>
-          <button
-            v-for="a in agentDefs"
-            :key="a.type"
-            :class="['skills-agent-item', { active: selectedAgent === a.type }]"
-            @click="selectAgent(a.type)"
-          >
+          <button v-for="a in agentDefs" :key="a.type"
+            :class="['skills-agent-item', { active: selectedAgent === a.type }]" @click="selectAgent(a.type)">
             <span class="agent-type-badge">{{ a.icon }}</span>
             <span class="skills-agent-label">{{ a.label }}</span>
             <span v-if="agentSkillCount(a.type) > 0" class="skill-count-badge">{{ agentSkillCount(a.type) }}</span>
@@ -201,7 +205,8 @@
           <div class="settings-head">
             <div class="settings-brand">
               <div class="settings-brand-mark">
-                <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="settings-brand-logo" @error="showBrandImage = false" />
+                <img v-if="showBrandImage" :src="brandLogo" alt="火宝短剧" class="settings-brand-logo"
+                  @error="showBrandImage = false" />
                 <span v-else class="settings-brand-fallback">火</span>
               </div>
               <div class="settings-brand-copy">
@@ -210,7 +215,8 @@
               </div>
             </div>
             <div style="display:flex;align-items:center;gap:10px">
-              <span class="agent-type-badge" style="width:32px;height:32px;font-size:16px">{{ selectedAgentIcon }}</span>
+              <span class="agent-type-badge" style="width:32px;height:32px;font-size:16px">{{ selectedAgentIcon
+              }}</span>
               <div>
                 <h2 class="settings-title" style="margin:0">{{ selectedAgentLabel }}</h2>
                 <div class="dim" style="font-size:12px">{{ selectedAgentType }} — Skills</div>
@@ -243,16 +249,12 @@
                 <button class="btn btn-ghost btn-icon" style="margin-right:4px" @click.stop="deleteSkill(s.id)">
                   <Trash2 :size="13" />
                 </button>
-                <ChevronDown :size="14" :style="{ transform: editingSkill === s.id ? 'rotate(180deg)' : '', transition: '0.2s' }" />
+                <ChevronDown :size="14"
+                  :style="{ transform: editingSkill === s.id ? 'rotate(180deg)' : '', transition: '0.2s' }" />
               </div>
               <div v-if="editingSkill === s.id" class="skill-card-body">
-                <textarea
-                  v-model="skillContent"
-                  class="textarea mono"
-                  rows="20"
-                  style="font-size:12px;line-height:1.6"
-                  placeholder="编写 SKILL.md 内容..."
-                />
+                <textarea v-model="skillContent" class="textarea mono" rows="20" style="font-size:12px;line-height:1.6"
+                  placeholder="编写 SKILL.md 内容..." />
                 <div class="skill-card-foot">
                   <span class="dim" style="font-size:11px">skills/{{ selectedAgentType }}/{{ s.id }}/SKILL.md</span>
                   <span v-if="skillSaved === s.id" class="tag tag-success" style="margin-left:8px">
@@ -282,13 +284,9 @@
           <span class="tag tag-accent">{{ serviceMeta[cfgForm.service_type].label }}</span>
         </div>
         <div class="preset-picker">
-          <button
-            v-for="preset in presetsByType(cfgForm.service_type)"
-            :key="`${cfgForm.service_type}-${preset.provider}`"
-            type="button"
-            class="preset-pill"
-            @click="applyProviderPreset(cfgForm.service_type, preset.provider)"
-          >
+          <button v-for="preset in presetsByType(cfgForm.service_type)"
+            :key="`${cfgForm.service_type}-${preset.provider}`" type="button" class="preset-pill"
+            @click="applyProviderPreset(cfgForm.service_type, preset.provider)">
             {{ preset.label }}
           </button>
         </div>
@@ -304,20 +302,26 @@
           <input v-model.number="cfgForm.priority" class="input" type="number" min="0" max="999" />
           <span class="field-hint">数值越高越优先。工作台默认会优先使用同类型里优先级最高的启用配置。</span>
         </label>
-        <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input" type="password" placeholder="sk-..." /></label>
-        <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input" placeholder="https://..." /></label>
+        <label class="field"><span class="field-label">API Key</span><input v-model="cfgForm.api_key" class="input"
+            type="password" placeholder="sk-..." /></label>
+        <label class="field"><span class="field-label">Base URL</span><input v-model="cfgForm.base_url" class="input"
+            placeholder="https://..." /></label>
         <div class="endpoint-hint">
           <span class="dim">实际端点前缀：</span>
           <span class="mono">{{ endpointHint }}</span>
         </div>
-        <label class="field"><span class="field-label">模型（逗号分隔）</span><input v-model="cfgForm.modelStr" class="input" placeholder="model-name" /></label>
-        <div v-if="cfgTestResult" class="test-result" :class="{ ok: cfgTestResult.reachable, bad: !cfgTestResult.reachable }">
+        <label class="field"><span class="field-label">模型（逗号分隔）</span><input v-model="cfgForm.modelStr" class="input"
+            placeholder="model-name" /></label>
+        <div v-if="cfgTestResult" class="test-result"
+          :class="{ ok: cfgTestResult.reachable, bad: !cfgTestResult.reachable }">
           <div class="test-result-head">
-            <span class="tag" :class="cfgTestResult.reachable ? 'tag-success' : 'tag-error'">{{ cfgTestResult.status || 'ERROR' }}</span>
+            <span class="tag" :class="cfgTestResult.reachable ? 'tag-success' : 'tag-error'">{{ cfgTestResult.status ||
+              'ERROR' }}</span>
             <span>{{ cfgTestResult.message }}</span>
           </div>
           <div class="mono test-result-url">{{ cfgTestResult.method }} {{ cfgTestResult.url }}</div>
-          <div v-if="cfgTestResult.response_preview" class="mono test-result-preview">{{ cfgTestResult.response_preview }}</div>
+          <div v-if="cfgTestResult.response_preview" class="mono test-result-preview">{{ cfgTestResult.response_preview
+          }}</div>
         </div>
         <div class="modal-actions">
           <button type="button" class="btn btn-ghost" :disabled="cfgTesting" @click="testDraftCfg">
@@ -335,21 +339,23 @@
       <form class="modal card config-modal" @submit.prevent="applyHuobaoPreset">
         <div class="config-modal-head">
           <div>
-            <div class="setup-kicker">Huobao Preset</div>
-            <h2 class="modal-title">火宝一键配置</h2>
+            <div class="setup-kicker">Wushuang Preset</div>
+            <h2 class="modal-title">一键配置</h2>
             <div class="modal-note">按火宝推荐链路自动创建或更新 4 条服务配置，并同时初始化 5 个 Agent 的默认模型。</div>
           </div>
           <span class="tag tag-success">推荐</span>
         </div>
         <div class="huobao-grid">
           <label class="field">
-            <span class="field-label">Huobao API Key <span class="dim">(统一用于文本 / 图片 / 视频 / 音频)</span></span>
+            <span class="field-label">wushuang API Key <span class="dim">(统一用于文本 / 图片 / 视频 / 音频)</span></span>
             <input v-model="huobaoForm.apiKey" class="input" type="password" placeholder="用于 api.chatfire.site 全链路服务" />
-            <span class="field-hint">还没有账号？<a href="https://api.chatfire.site/" target="_blank" rel="noopener">立即注册 →</a></span>
+            <span class="field-hint">还没有账号？<a href="https://api.chatfire.site/" target="_blank" rel="noopener">立即注册
+                →</a></span>
           </label>
         </div>
         <div class="preset-grid compact">
-          <article v-for="preset in huobaoPresetCards" :key="`${preset.serviceType}-${preset.provider}`" class="preset-card">
+          <article v-for="preset in huobaoPresetCards" :key="`${preset.serviceType}-${preset.provider}`"
+            class="preset-card">
             <div class="preset-card-top">
               <span class="preset-service">{{ preset.label }}</span>
               <span class="tag tag-accent">{{ preset.provider }}</span>
@@ -839,44 +845,115 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
 </script>
 
 <style scoped>
-.settings-layout { display: flex; height: 100%; background: var(--bg-base); }
+.settings-layout {
+  display: flex;
+  height: 100%;
+  background: var(--bg-base);
+}
 
 .settings-nav {
-  width: 220px; flex-shrink: 0; padding: 16px 10px; border-right: 1px solid var(--border);
-  display: flex; flex-direction: column; gap: 14px; background: var(--bg-1);
+  width: 220px;
+  flex-shrink: 0;
+  padding: 16px 10px;
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  background: var(--bg-1);
 }
-.nav-group { display: flex; flex-direction: column; gap: 4px; }
+
+.nav-group {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
 .nav-group-label {
-  font-size: 10px; font-weight: 700; color: var(--text-3);
-  letter-spacing: 0.12em; text-transform: uppercase; padding: 0 10px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  color: var(--text-3);
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  padding: 0 10px 4px;
 }
+
 .nav-item {
-  display: flex; align-items: center; gap: 8px; padding: 9px 12px; font-size: 13px;
-  border: none; background: none; color: var(--text-2); cursor: pointer;
-  border-radius: var(--radius); transition: all 0.12s; text-align: left; width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 12px;
+  font-size: 13px;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  cursor: pointer;
+  border-radius: var(--radius);
+  transition: all 0.12s;
+  text-align: left;
+  width: 100%;
 }
-.nav-item:hover { background: var(--bg-hover); color: var(--text-0); }
-.nav-item.active { background: var(--accent-bg); color: var(--accent-text); font-weight: 600; box-shadow: var(--shadow-card); }
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-0);
+}
+
+.nav-item.active {
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  font-weight: 600;
+  box-shadow: var(--shadow-card);
+}
+
 .nav-advanced {
   padding: 12px 8px;
   border-top: 1px solid rgba(27, 41, 64, 0.08);
   border-bottom: 1px solid rgba(27, 41, 64, 0.08);
 }
+
 .advanced-toggle {
-  display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px;
-  font-size: 12px; color: var(--text-2);
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+  color: var(--text-2);
 }
-.advanced-toggle input { display: none; }
+
+.advanced-toggle input {
+  display: none;
+}
+
 .advanced-slider {
-  position: relative; width: 38px; height: 22px; border-radius: 999px;
-  background: rgba(27, 41, 64, 0.12); transition: background 0.18s ease;
+  position: relative;
+  width: 38px;
+  height: 22px;
+  border-radius: 999px;
+  background: rgba(27, 41, 64, 0.12);
+  transition: background 0.18s ease;
 }
+
 .advanced-slider::after {
-  content: ''; position: absolute; top: 3px; left: 3px; width: 16px; height: 16px;
-  border-radius: 50%; background: #fff; box-shadow: 0 2px 6px rgba(18, 24, 38, 0.18); transition: transform 0.18s ease;
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 2px 6px rgba(18, 24, 38, 0.18);
+  transition: transform 0.18s ease;
 }
-.advanced-toggle input:checked + .advanced-slider { background: var(--accent); }
-.advanced-toggle input:checked + .advanced-slider::after { transform: translateX(16px); }
+
+.advanced-toggle input:checked+.advanced-slider {
+  background: var(--accent);
+}
+
+.advanced-toggle input:checked+.advanced-slider::after {
+  transform: translateX(16px);
+}
+
 .advanced-note {
   margin: 8px 0 0;
   font-size: 11px;
@@ -884,32 +961,50 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   color: var(--text-3);
 }
 
-.settings-content { flex: 1; overflow: hidden; }
-.settings-scroll { height: 100%; overflow-y: auto; padding: 36px 48px; max-width: 840px; margin: 0 auto; animation: fadeUp 0.3s var(--ease-out); }
-.settings-head { margin-bottom: 24px; }
+.settings-content {
+  flex: 1;
+  overflow: hidden;
+}
+
+.settings-scroll {
+  height: 100%;
+  overflow-y: auto;
+  padding: 36px 48px;
+  max-width: 840px;
+  margin: 0 auto;
+  animation: fadeUp 0.3s var(--ease-out);
+}
+
+.settings-head {
+  margin-bottom: 24px;
+}
+
 .settings-brand {
   display: flex;
   align-items: center;
   gap: 12px;
   margin-bottom: 12px;
 }
+
 .settings-brand-mark {
   width: 42px;
   height: 42px;
   border-radius: 15px;
   border: 1px solid var(--border);
-  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(242,247,255,0.9));
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(242, 247, 255, 0.9));
   box-shadow: var(--shadow-sm);
   display: flex;
   align-items: center;
   justify-content: center;
 }
+
 .settings-brand-logo {
   width: 26px;
   height: 26px;
   object-fit: contain;
   display: block;
 }
+
 .settings-brand-fallback {
   font-family: var(--font-display);
   font-size: 20px;
@@ -917,12 +1012,14 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   color: var(--accent-text);
   line-height: 1;
 }
+
 .settings-brand-copy {
   display: flex;
   flex-direction: column;
   gap: 3px;
   line-height: 1;
 }
+
 .settings-brand-kicker {
   font-size: 10px;
   font-weight: 700;
@@ -930,20 +1027,33 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   letter-spacing: 0.14em;
   text-transform: uppercase;
 }
+
 .settings-brand-name {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-1);
   font-family: var(--font-display);
 }
-.settings-title { font-family: var(--font-display); font-size: 22px; font-weight: 700; letter-spacing: -0.01em; }
-.settings-desc { font-size: 13px; color: var(--text-2); margin-top: 4px; }
+
+.settings-title {
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.settings-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  margin-top: 4px;
+}
 
 /* AI Config */
 .setup-panel {
   padding: 18px 18px 16px;
   margin-bottom: 18px;
 }
+
 .setup-panel-head {
   display: flex;
   align-items: flex-start;
@@ -952,7 +1062,10 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   margin-bottom: 14px;
 }
 
-.setup-panel-head.compact { margin-bottom: 12px; }
+.setup-panel-head.compact {
+  margin-bottom: 12px;
+}
+
 .setup-kicker {
   font-size: 10px;
   font-weight: 700;
@@ -961,47 +1074,71 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   color: var(--text-3);
   margin-bottom: 4px;
 }
+
 .setup-title {
   font-size: 16px;
   font-weight: 700;
   color: var(--text-0);
 }
+
 .setup-desc {
   font-size: 12px;
   color: var(--text-2);
   margin-top: 4px;
 }
+
 .preset-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 10px;
 }
+
 .preset-grid.compact {
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: 8px;
 }
+
 .preset-card {
   border: 1px solid var(--border);
   border-radius: 16px;
-  background: rgba(255,255,255,0.82);
+  background: rgba(255, 255, 255, 0.82);
   padding: 12px 13px;
   display: flex;
   flex-direction: column;
   gap: 6px;
 }
+
 .preset-card-top {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 8px;
 }
-.preset-service { font-size: 12px; font-weight: 600; }
-.preset-model { font-size: 12px; color: var(--text-1); }
-.preset-base { font-size: 11px; color: var(--text-3); }
-.template-row { display: flex; flex-wrap: wrap; gap: 8px; }
+
+.preset-service {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.preset-model {
+  font-size: 12px;
+  color: var(--text-1);
+}
+
+.preset-base {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.template-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .template-type-chip {
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.82);
+  background: rgba(255, 255, 255, 0.82);
   color: var(--text-1);
   border-radius: 999px;
   padding: 8px 12px;
@@ -1009,129 +1146,425 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   cursor: pointer;
   transition: 0.15s;
 }
+
 .template-type-chip:hover {
   border-color: var(--accent);
   color: var(--accent-text);
   background: var(--accent-bg);
 }
-.sections { display: flex; flex-direction: column; gap: 24px; }
-.section-head { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
-.section-title { font-size: 13px; font-weight: 600; }
-.section-subtitle { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-.config-list { display: flex; flex-direction: column; gap: 6px; }
-.config-row { display: flex; align-items: center; gap: 8px; padding: 10px 14px; }
-.config-info { flex: 1; display: flex; align-items: center; gap: 10px; min-width: 0; }
-.config-main { min-width: 0; display: flex; flex-direction: column; gap: 4px; }
-.config-line { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.config-provider { font-size: 13px; font-weight: 600; }
-.config-name { font-size: 12px; color: var(--text-2); }
-.config-model { font-size: 11px; color: var(--text-2); }
-.config-base { font-size: 11px; color: var(--text-3); }
-.config-empty { font-size: 12px; color: var(--text-3); padding: 12px 0; }
 
-.toggle { position: relative; width: 30px; height: 17px; cursor: pointer; flex-shrink: 0; }
-.toggle input { opacity: 0; width: 0; height: 0; }
-.toggle span { position: absolute; inset: 0; background: var(--bg-3); border-radius: 99px; transition: 0.2s; }
-.toggle span::before { content: ''; position: absolute; width: 13px; height: 13px; left: 2px; bottom: 2px; background: var(--bg-0); border-radius: 50%; transition: 0.2s; box-shadow: var(--shadow); }
-.toggle input:checked + span { background: var(--accent); }
-.toggle input:checked + span::before { transform: translateX(13px); }
+.sections {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+
+.section-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.section-title {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.section-subtitle {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.config-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.config-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+}
+
+.config-info {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.config-main {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.config-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.config-provider {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.config-name {
+  font-size: 12px;
+  color: var(--text-2);
+}
+
+.config-model {
+  font-size: 11px;
+  color: var(--text-2);
+}
+
+.config-base {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.config-empty {
+  font-size: 12px;
+  color: var(--text-3);
+  padding: 12px 0;
+}
+
+.toggle {
+  position: relative;
+  width: 30px;
+  height: 17px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.toggle input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle span {
+  position: absolute;
+  inset: 0;
+  background: var(--bg-3);
+  border-radius: 99px;
+  transition: 0.2s;
+}
+
+.toggle span::before {
+  content: '';
+  position: absolute;
+  width: 13px;
+  height: 13px;
+  left: 2px;
+  bottom: 2px;
+  background: var(--bg-0);
+  border-radius: 50%;
+  transition: 0.2s;
+  box-shadow: var(--shadow);
+}
+
+.toggle input:checked+span {
+  background: var(--accent);
+}
+
+.toggle input:checked+span::before {
+  transform: translateX(13px);
+}
 
 /* Agent */
-.agent-list { display: flex; flex-direction: column; gap: 8px; }
-.agent-card { overflow: hidden; }
-.agent-card-head { display: flex; align-items: center; gap: 10px; padding: 14px 16px; cursor: pointer; transition: background 0.1s; }
-.agent-card-head:hover { background: var(--bg-hover); }
-.agent-type-badge { width: 36px; height: 36px; border-radius: var(--radius); background: var(--accent-bg); color: var(--accent); display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0; }
-.agent-card-body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 12px; border-top: 1px solid var(--border); padding-top: 16px; }
-.agent-card-foot { display: flex; align-items: center; gap: 8px; padding-top: 8px; }
+.agent-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.agent-card {
+  overflow: hidden;
+}
+
+.agent-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.agent-card-head:hover {
+  background: var(--bg-hover);
+}
+
+.agent-type-badge {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius);
+  background: var(--accent-bg);
+  color: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  flex-shrink: 0;
+}
+
+.agent-card-body {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  padding-top: 16px;
+}
+
+.agent-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding-top: 8px;
+}
 
 /* Skills 布局 */
-.skills-layout { display: flex; height: 100%; overflow: hidden; }
+.skills-layout {
+  display: flex;
+  height: 100%;
+  overflow: hidden;
+}
+
 .skills-agent-list {
-  width: 200px; flex-shrink: 0; border-right: 1px solid var(--border);
-  background: var(--bg-1); display: flex; flex-direction: column;
+  width: 200px;
+  flex-shrink: 0;
+  border-right: 1px solid var(--border);
+  background: var(--bg-1);
+  display: flex;
+  flex-direction: column;
   overflow-y: auto;
 }
+
 .skills-agent-title {
-  font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.1em;
-  color: var(--text-3); padding: 14px 14px 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-3);
+  padding: 14px 14px 8px;
 }
+
 .skills-agent-item {
-  display: flex; align-items: center; gap: 8px;
-  padding: 9px 14px; font-size: 13px; cursor: pointer;
-  border: none; background: none; color: var(--text-2);
-  transition: all 0.12s; width: 100%; text-align: left;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  font-size: 13px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  color: var(--text-2);
+  transition: all 0.12s;
+  width: 100%;
+  text-align: left;
   border-radius: 0;
 }
-.skills-agent-item:hover { background: var(--bg-hover); color: var(--text-0); }
-.skills-agent-item.active { background: var(--accent-bg); color: var(--accent-text); font-weight: 600; }
-.skills-agent-label { flex: 1; }
-.skill-count-badge {
-  font-size: 10px; font-weight: 700; font-family: var(--font-mono);
-  background: var(--accent-bg); color: var(--accent-text);
-  padding: 1px 5px; border-radius: 99px;
+
+.skills-agent-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-0);
 }
-.skills-agent-item.active .skill-count-badge { background: rgba(255,255,255,0.2); color: inherit; }
-.skills-main { flex: 1; overflow: hidden; display: flex; flex-direction: column; }
-.skills-main .settings-scroll { max-width: 900px; }
+
+.skills-agent-item.active {
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  font-weight: 600;
+}
+
+.skills-agent-label {
+  flex: 1;
+}
+
+.skill-count-badge {
+  font-size: 10px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  background: var(--accent-bg);
+  color: var(--accent-text);
+  padding: 1px 5px;
+  border-radius: 99px;
+}
+
+.skills-agent-item.active .skill-count-badge {
+  background: rgba(255, 255, 255, 0.2);
+  color: inherit;
+}
+
+.skills-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.skills-main .settings-scroll {
+  max-width: 900px;
+}
 
 /* Skill */
-.skill-list { display: flex; flex-direction: column; gap: 8px; }
-.skill-card { overflow: hidden; }
-.skill-card-head { display: flex; align-items: center; gap: 10px; padding: 12px 16px; cursor: pointer; transition: background 0.1s; }
-.skill-card-head:hover { background: var(--bg-hover); }
-.skill-card-body { padding: 0 16px 16px; display: flex; flex-direction: column; gap: 10px; border-top: 1px solid var(--border); padding-top: 12px; }
-.skill-card-foot { display: flex; align-items: center; gap: 8px; }
+.skill-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.skill-card {
+  overflow: hidden;
+}
+
+.skill-card-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+
+.skill-card-head:hover {
+  background: var(--bg-hover);
+}
+
+.skill-card-body {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.skill-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
 
 /* Shared */
-.field { display: flex; flex-direction: column; gap: 5px; }
-.field-label { font-size: 12px; font-weight: 500; color: var(--text-1); }
-.field-hint { font-size: 11px; color: var(--text-3); margin-top: 2px; }
-.field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
 
-.overlay { position: fixed; inset: 0; background: rgba(34,45,66,0.32); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100; animation: fadeIn 0.18s var(--ease-out); }
-.modal { padding: 28px; width: 420px; display: flex; flex-direction: column; gap: 12px; box-shadow: var(--shadow-elevated); }
-.modal-title { font-family: var(--font-display); font-size: 18px; font-weight: 700; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 6px; }
-.config-modal { width: min(720px, calc(100vw - 40px)); max-height: calc(100vh - 48px); overflow-y: auto; }
+.field-label {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-1);
+}
+
+.field-hint {
+  font-size: 11px;
+  color: var(--text-3);
+  margin-top: 2px;
+}
+
+.field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(34, 45, 66, 0.32);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  animation: fadeIn 0.18s var(--ease-out);
+}
+
+.modal {
+  padding: 28px;
+  width: 420px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  box-shadow: var(--shadow-elevated);
+}
+
+.modal-title {
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 6px;
+}
+
+.config-modal {
+  width: min(720px, calc(100vw - 40px));
+  max-height: calc(100vh - 48px);
+  overflow-y: auto;
+}
+
 .config-modal-head {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
 }
+
 .modal-note {
   margin-top: 6px;
   font-size: 12px;
   color: var(--text-2);
 }
+
 .preset-picker {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
 }
+
 .preset-pill {
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.72);
+  background: rgba(255, 255, 255, 0.72);
   color: var(--text-1);
   border-radius: 999px;
   padding: 8px 11px;
   font-size: 12px;
   cursor: pointer;
 }
+
 .preset-pill:hover {
   border-color: var(--accent);
   background: var(--accent-bg);
   color: var(--accent-text);
 }
+
 .endpoint-hint {
   margin-top: -4px;
   padding: 10px 12px;
   border-radius: 12px;
   border: 1px dashed var(--border);
-  background: rgba(244,248,255,0.72);
+  background: rgba(244, 248, 255, 0.72);
   font-size: 12px;
 }
+
 .test-result {
   display: flex;
   flex-direction: column;
@@ -1139,10 +1572,17 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   border-radius: 14px;
   padding: 12px;
   border: 1px solid var(--border);
-  background: rgba(255,255,255,0.72);
+  background: rgba(255, 255, 255, 0.72);
 }
-.test-result.ok { border-color: rgba(74, 167, 92, 0.28); }
-.test-result.bad { border-color: rgba(201, 88, 68, 0.28); }
+
+.test-result.ok {
+  border-color: rgba(74, 167, 92, 0.28);
+}
+
+.test-result.bad {
+  border-color: rgba(201, 88, 68, 0.28);
+}
+
 .test-result-head {
   display: flex;
   align-items: center;
@@ -1150,27 +1590,32 @@ onMounted(() => { loadCfgs(); loadAgents(); loadAllSkills() })
   font-size: 12px;
   color: var(--text-1);
 }
+
 .test-result-url,
 .test-result-preview {
   font-size: 11px;
   color: var(--text-3);
   word-break: break-all;
 }
+
 .huobao-grid {
   display: grid;
   grid-template-columns: repeat(1, minmax(0, 1fr));
   gap: 10px;
 }
+
 .huobao-grid .field-hint a {
   color: var(--accent);
   text-decoration: none;
   font-weight: 500;
 }
+
 .huobao-grid .field-hint a:hover {
   text-decoration: underline;
 }
 
 @media (max-width: 900px) {
+
   .preset-grid,
   .preset-grid.compact {
     grid-template-columns: 1fr;

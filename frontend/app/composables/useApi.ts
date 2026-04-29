@@ -9,7 +9,14 @@ async function req<T = any>(method: string, path: string, body?: any): Promise<T
 
   try {
     const resp = await fetch(`${BASE}${path}`, opts)
-    const json = await resp.json()
+    const text = await resp.text()
+    let json: any
+    try {
+      json = JSON.parse(text)
+    } catch {
+      console.error(`[API] 非 JSON 响应`, text.slice(0, 200))
+      throw new Error('后端返回了无效数据，请确认后端服务已启动')
+    }
     const ms = Math.round(performance.now() - start)
 
     if (!resp.ok || (json.code && json.code >= 400)) {
