@@ -22,6 +22,54 @@ function normalizeToolResult(entry: any) {
   return typeof result === 'string' ? result : JSON.stringify(result)
 }
 
+function extractStreamPayload(chunk: any): Record<string, unknown> {
+  switch (chunk.type) {
+    case 'step-start':
+      return { stepNumber: chunk.payload?.stepNumber }
+    case 'step-finish':
+      return {
+        stepNumber: chunk.payload?.stepNumber,
+        totalSteps: chunk.payload?.totalSteps,
+        usage: chunk.payload?.usage,
+      }
+    case 'tool-call':
+      return {
+        toolCallId: chunk.payload?.toolCallId,
+        toolName: chunk.payload?.toolName,
+        args: chunk.payload?.args,
+      }
+    case 'tool-result':
+      return {
+        toolCallId: chunk.payload?.toolCallId,
+        toolName: chunk.payload?.toolName,
+        result: typeof chunk.payload?.result === 'string'
+          ? chunk.payload.result
+          : JSON.stringify(chunk.payload?.result).slice(0, 500),
+      }
+    case 'text-delta':
+      return { text: chunk.payload?.text }
+    case 'finish':
+      return {
+        text: chunk.payload?.text,
+        toolCalls: chunk.payload?.toolCalls?.map((tc: any) => ({
+          toolCallId: tc.toolCallId,
+          toolName: tc.toolName,
+          args: tc.args,
+        })),
+        toolResults: chunk.payload?.toolResults?.map((tr: any) => ({
+          toolCallId: tr.toolCallId,
+          toolName: tr.toolName,
+          result: typeof tr.result === 'string' ? tr.result.slice(0, 500) : JSON.stringify(tr.result).slice(0, 500),
+        })),
+        usage: chunk.payload?.usage,
+      }
+    case 'error':
+      return { error: chunk.payload?.error || 'Unknown error' }
+    default:
+      return {}
+  }
+}
+
 // POST /agent/:type/chat — 非流式 Agent 对话
 app.post('/:type/chat', async (c) => {
   const agentType = c.req.param('type')
@@ -92,6 +140,85 @@ app.post('/:type/chat', async (c) => {
     console.error(err.stack || err)
     return badRequest(c, err.message || 'Agent execution failed')
   }
+})
+
+// POST /agent/:type/chat-stream — SSE streaming Agent chat
+app.post('/:type/chat-stream', async (c) => {
+  const agentType = c.req.param('type')
+  if (!validAgentTypes.includes(agentType)) {
+    return badRequest(c, `Invalid agent type: ${agentType}`)
+  }
+
+  const body = await c.req.json()
+  const { message, drama_id, episode_id } = body
+
+  logTaskStart('Agent', `${agentType}-stream`, {
+    dramaId: drama_id,
+    episodeId: episode_id,
+    message,
+  })
+
+  if (!episode_id || !drama_id) {
+    logTaskError('Agent', `${agentType}-stream`, { reason: 'missing drama_id or episode_id' })
+    return badRequest(c, 'drama_id and episode_id are required')
+  }
+
+  const agent = createAgent(agentType, episode_id, drama_id)
+  if (!agent) {
+    logTaskError('Agent', `${agentType}-stream`, { reason: 'agent not found' })
+    return badRequest(c, 'Agent not found')
+  }
+
+  const startTime = performance.now()
+
+  const stream = new ReadableStream({
+    async start(controller) {
+      try {
+        const output = await agent.stream(
+          [{ role: 'user', content: message }],
+          {
+            maxSteps: 20,
+            abortSignal: c.req.raw.signal,
+            onError: ({ error }) => {
+              const event = JSON.stringify({ type: 'error', payload: { error: error instanceof Error ? error.message : String(error) } })
+              controller.enqueue(`data: ${event}\n\n`)
+            },
+          },
+        )
+
+        const reader = output.fullStream.getReader()
+        while (true) {
+          const { done, value } = await reader.read()
+          if (done) break
+          const event = JSON.stringify({
+            type: value.type,
+            payload: extractStreamPayload(value),
+          })
+          controller.enqueue(`data: ${event}\n\n`)
+        }
+        reader.releaseLock()
+
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
+        logTaskSuccess('Agent', `${agentType}-stream`, { elapsedSeconds: elapsed })
+        controller.close()
+      } catch (err: any) {
+        const elapsed = ((performance.now() - startTime) / 1000).toFixed(1)
+        logTaskError('Agent', `${agentType}-stream`, { elapsedSeconds: elapsed, error: err.message })
+        const event = JSON.stringify({ type: 'error', payload: { error: err.message || 'Agent execution failed' } })
+        controller.enqueue(`data: ${event}\n\n`)
+        controller.close()
+      }
+    },
+  })
+
+  return new Response(stream, {
+    headers: {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive',
+      'X-Accel-Buffering': 'no',
+    },
+  })
 })
 
 // GET /agent/:type/debug
