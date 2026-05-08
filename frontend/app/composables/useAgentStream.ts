@@ -1,3 +1,5 @@
+import { ref } from 'vue'
+
 interface StepEntry {
   toolName: string
   label: string
