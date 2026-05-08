@@ -28,7 +28,7 @@
         :key="d.id"
         class="card project-card"
         :style="{ animationDelay: `${i * 0.06}s` }"
-        @click="navigateTo(`/drama/${d.id}`)"
+        @click="goToDrama(d)"
       >
         <!-- Card film strip decoration -->
         <div class="card-film-strip">
@@ -162,12 +162,16 @@ async function load() {
   }
 }
 
+async function goToDrama(d) {
+  await navigateTo(`/drama/${d.id}`)
+}
+
 async function create() {
   if (!form.value.title?.trim()) return
   try {
     const d = await dramaAPI.create(form.value)
     showCreate.value = false
-    navigateTo(`/drama/${d.id}`)
+    await navigateTo(`/drama/${d.id}`)
   } catch (e) {
     toast.error(e.message)
   }

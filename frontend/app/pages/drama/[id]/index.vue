@@ -3,7 +3,7 @@
     <!-- Header -->
     <div class="page-head">
       <div class="head-left">
-        <button class="back-btn" @click="navigateTo('/')">
+        <button class="back-btn" @click="goBack">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
           </svg>
@@ -52,7 +52,7 @@
         :key="ep.id"
         class="card ep-card"
         :style="{ animationDelay: `${i * 0.05}s` }"
-        @click="navigateTo(`/drama/${drama.id}/episode/${ep.episode_number || ep.episodeNumber}`)"
+        @click="goToEpisode(ep)"
       >
         <div class="ep-number">E{{ String(ep.episode_number || ep.episodeNumber).padStart(2, '0') }}</div>
         <div class="ep-body">
@@ -167,6 +167,10 @@ const newEpisodeVideoConfigId = ref(null)
 const newEpisodeAudioConfigId = ref(null)
 
 function hasScript(ep) { return !!(ep.script_content || ep.scriptContent) }
+async function goBack() { await navigateTo('/') }
+async function goToEpisode(ep) {
+  await navigateTo(`/drama/${drama.value.id}/episode/${ep.episode_number || ep.episodeNumber}`)
+}
 
 function configLabel(config) {
   if (!config) return ''

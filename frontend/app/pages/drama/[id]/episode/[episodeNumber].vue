@@ -2,7 +2,7 @@
   <div class="studio" v-if="drama">
     <header class="studio-topbar">
       <div class="studio-topbar-main">
-        <button class="back-btn topbar-back" @click="navigateTo(`/drama/${dramaId}`)">
+        <button class="back-btn topbar-back" @click="goBack">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round">
             <line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>
           </svg>
@@ -1502,6 +1502,7 @@ const drama = ref(null), episode = ref(null), chars = ref([]), scenes = ref([]),
 const panel = ref('script')
 const { progress: agentProgress, runStream: runAgentStream } = useAgentStream()
 const streamType = ref<string | null>(null)
+async function goBack() { await navigateTo(`/drama/${dramaId}`) }
 
 const localRaw = ref(''), localScript = ref('')
 const rawContent = computed(() => episode.value?.content || '')

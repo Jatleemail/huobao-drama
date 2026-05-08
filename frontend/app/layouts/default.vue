@@ -3,7 +3,7 @@
     <!-- Header -->
     <header class="header">
       <div class="header-left">
-        <button class="brand" @click="navigateTo('/')">
+        <button class="brand" @click="goHome">
           <div class="brand-mark">
             <img v-if="showBrandImage" :src="brandLogo" alt="无双漫剧" class="brand-logo" @error="showBrandImage = false" />
             <span v-else class="brand-fallback">双</span>
@@ -57,6 +57,7 @@ import brandLogo from '~/assets/huobao-logo.png'
 
 const route = useRoute()
 const showBrandImage = ref(true)
+async function goHome() { await navigateTo('/') }
 </script>
 
 <style scoped>
