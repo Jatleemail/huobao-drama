@@ -143,15 +143,15 @@
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14"/><path d="M13 18l6-6-6-6"/></svg>
                 跳过改写
               </button>
-              <button v-if="scriptContent" class="btn btn-sm" @click="doRewrite" :disabled="rn">
-                <Loader2 v-if="rn && rt === 'script_rewriter'" :size="11" class="animate-spin" />
+              <button v-if="scriptContent" class="btn btn-sm" @click="doRewrite" :disabled="agentProgress.status === 'running'">
+                <Loader2 v-if="agentProgress.status === 'running' && streamType === 'script_rewriter'" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/></svg>
                 重新改写
               </button>
             </div>
           </div>
 
-          <div v-if="!scriptContent && !rn" class="step-empty">
+          <div v-if="!scriptContent && agentProgress.status !== 'running'" class="step-empty">
             <div class="empty-visual">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round">
                 <path d="M15 3h4a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2h-4"/><polyline points="10 17 15 12 10 7"/><line x1="15" y1="12" x2="3" y2="12"/>
@@ -170,9 +170,21 @@
               </button>
             </div>
           </div>
-          <div v-else-if="rn && rt === 'script_rewriter'" class="step-loading">
-            <Loader2 :size="24" class="animate-spin" style="color:var(--accent)" />
-            <div class="loading-text">正在改写剧本...</div>
+          <div v-else-if="agentProgress.status === 'running' && streamType === 'script_rewriter'" class="agent-progress-panel">
+            <div class="agent-progress-steps">
+              <div v-for="(step, i) in agentProgress.steps" :key="i" class="agent-step-row">
+                <span :class="['agent-step-icon', step.status]">
+                  <Check v-if="step.status === 'done'" :size="12" />
+                  <Loader2 v-else-if="step.status === 'active'" :size="12" class="animate-spin" />
+                  <span v-else class="agent-step-pending-dot" />
+                </span>
+                <span class="agent-step-label" :class="step.status">{{ step.label }}</span>
+                <span v-if="step.result" class="agent-step-result">{{ step.result }}</span>
+              </div>
+            </div>
+            <div v-if="agentProgress.text" class="agent-progress-text">{{ agentProgress.text }}</div>
+            <div v-if="agentProgress.summary" class="agent-progress-summary">{{ agentProgress.summary }}</div>
+            <div v-if="agentProgress.error" class="agent-progress-error">{{ agentProgress.error }}</div>
           </div>
           <textarea v-else class="fill-textarea" v-model="localScript" placeholder="格式化剧本内容..." />
         </div>
@@ -188,15 +200,15 @@
             </div>
             <div class="toolbar-right">
               <span v-if="chars.length" class="char-count">{{ chars.length }} 角色 · {{ scenes.length }} 场景</span>
-              <button v-if="chars.length" class="btn btn-sm" @click="doExtract" :disabled="rn">
-                <Loader2 v-if="rn && rt === 'extractor'" :size="11" class="animate-spin" />
+              <button v-if="chars.length" class="btn btn-sm" @click="doExtract" :disabled="agentProgress.status === 'running'">
+                <Loader2 v-if="agentProgress.status === 'running' && streamType === 'extractor'" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
                 重新提取
               </button>
             </div>
           </div>
 
-          <div v-if="!chars.length && !rn" class="step-empty">
+          <div v-if="!chars.length && agentProgress.status !== 'running'" class="step-empty">
             <div class="empty-visual">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             </div>
@@ -207,9 +219,21 @@
               开始提取
             </button>
           </div>
-          <div v-else-if="rn && rt === 'extractor'" class="step-loading">
-            <Loader2 :size="24" class="animate-spin" style="color:var(--accent)" />
-            <div class="loading-text">正在提取角色和场景...</div>
+          <div v-else-if="agentProgress.status === 'running' && streamType === 'extractor'" class="agent-progress-panel">
+            <div class="agent-progress-steps">
+              <div v-for="(step, i) in agentProgress.steps" :key="i" class="agent-step-row">
+                <span :class="['agent-step-icon', step.status]">
+                  <Check v-if="step.status === 'done'" :size="12" />
+                  <Loader2 v-else-if="step.status === 'active'" :size="12" class="animate-spin" />
+                  <span v-else class="agent-step-pending-dot" />
+                </span>
+                <span class="agent-step-label" :class="step.status">{{ step.label }}</span>
+                <span v-if="step.result" class="agent-step-result">{{ step.result }}</span>
+              </div>
+            </div>
+            <div v-if="agentProgress.text" class="agent-progress-text">{{ agentProgress.text }}</div>
+            <div v-if="agentProgress.summary" class="agent-progress-summary">{{ agentProgress.summary }}</div>
+            <div v-if="agentProgress.error" class="agent-progress-error">{{ agentProgress.error }}</div>
           </div>
           <div v-else class="extract-stage">
             <aside class="card extract-summary">
@@ -285,8 +309,8 @@
             <div class="toolbar-right">
               <span v-if="charsVoiced" class="char-count">{{ charsVoiced }}/{{ chars.length }} 已分配</span>
               <span v-if="voiceSampleCount" class="char-count">{{ voiceSampleCount }}/{{ charsVoiced }} 试听文件</span>
-              <button v-if="charsVoiced" class="btn btn-sm" @click="doVoice" :disabled="rn">
-                <Loader2 v-if="rn && rt === 'voice_assigner'" :size="11" class="animate-spin" />
+              <button v-if="charsVoiced" class="btn btn-sm" @click="doVoice" :disabled="agentProgress.status === 'running'">
+                <Loader2 v-if="agentProgress.status === 'running' && streamType === 'voice_assigner'" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
                 重新分配
               </button>
@@ -297,7 +321,7 @@
             </div>
           </div>
 
-          <div v-if="!charsVoiced && !rn" class="step-empty">
+          <div v-if="!charsVoiced && agentProgress.status !== 'running'" class="step-empty">
             <div class="empty-visual">
               <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"><path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/></svg>
             </div>
@@ -308,9 +332,21 @@
               AI 自动分配
             </button>
           </div>
-          <div v-else-if="rn && rt === 'voice_assigner'" class="step-loading">
-            <Loader2 :size="24" class="animate-spin" style="color:var(--accent)" />
-            <div class="loading-text">正在分配音色...</div>
+          <div v-else-if="agentProgress.status === 'running' && streamType === 'voice_assigner'" class="agent-progress-panel">
+            <div class="agent-progress-steps">
+              <div v-for="(step, i) in agentProgress.steps" :key="i" class="agent-step-row">
+                <span :class="['agent-step-icon', step.status]">
+                  <Check v-if="step.status === 'done'" :size="12" />
+                  <Loader2 v-else-if="step.status === 'active'" :size="12" class="animate-spin" />
+                  <span v-else class="agent-step-pending-dot" />
+                </span>
+                <span class="agent-step-label" :class="step.status">{{ step.label }}</span>
+                <span v-if="step.result" class="agent-step-result">{{ step.result }}</span>
+              </div>
+            </div>
+            <div v-if="agentProgress.text" class="agent-progress-text">{{ agentProgress.text }}</div>
+            <div v-if="agentProgress.summary" class="agent-progress-summary">{{ agentProgress.summary }}</div>
+            <div v-if="agentProgress.error" class="agent-progress-error">{{ agentProgress.error }}</div>
           </div>
           <div v-else class="voice-stage">
             <aside class="card voice-stage-panel">
@@ -417,8 +453,8 @@
               <template v-if="!sbs.length">
                 <span class="locked-config">视频模型 · {{ lockedVideoConfigLabel }}</span>
               </template>
-              <button class="btn btn-sm" :disabled="rn" @click="doBreakdown">
-                <Loader2 v-if="rt === 'storyboard_breaker'" :size="11" class="animate-spin" />
+              <button class="btn btn-sm" :disabled="agentProgress.status === 'running'" @click="doBreakdown">
+                <Loader2 v-if="streamType === 'storyboard_breaker'" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                 {{ sbs.length ? '重新拆解' : 'AI 拆解分镜' }}
               </button>
@@ -679,9 +715,21 @@
             </div>
           </div>
 
-          <div v-else-if="rn && rt === 'storyboard_breaker'" class="step-loading">
-            <Loader2 :size="24" class="animate-spin" style="color:var(--accent)" />
-            <div class="loading-text">正在拆解分镜并生成提示词...</div>
+          <div v-else-if="agentProgress.status === 'running' && streamType === 'storyboard_breaker'" class="agent-progress-panel">
+            <div class="agent-progress-steps">
+              <div v-for="(step, i) in agentProgress.steps" :key="i" class="agent-step-row">
+                <span :class="['agent-step-icon', step.status]">
+                  <Check v-if="step.status === 'done'" :size="12" />
+                  <Loader2 v-else-if="step.status === 'active'" :size="12" class="animate-spin" />
+                  <span v-else class="agent-step-pending-dot" />
+                </span>
+                <span class="agent-step-label" :class="step.status">{{ step.label }}</span>
+                <span v-if="step.result" class="agent-step-result">{{ step.result }}</span>
+              </div>
+            </div>
+            <div v-if="agentProgress.text" class="agent-progress-text">{{ agentProgress.text }}</div>
+            <div v-if="agentProgress.summary" class="agent-progress-summary">{{ agentProgress.summary }}</div>
+            <div v-if="agentProgress.error" class="agent-progress-error">{{ agentProgress.error }}</div>
           </div>
 
           <div v-else class="step-empty">
@@ -694,7 +742,7 @@
             <div class="empty-desc">AI 自动分析剧本，生成镜头列表和视频提示词</div>
             <div class="locked-config-banner">当前集视频模型：{{ lockedVideoConfigLabel }}</div>
             <button class="btn btn-primary" @click="doBreakdown">
-              <Loader2 v-if="rt === 'storyboard_breaker'" :size="13" class="animate-spin" />
+              <Loader2 v-if="streamType === 'storyboard_breaker'" :size="13" class="animate-spin" />
               <svg v-else width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
               AI 拆解分镜
             </button>
@@ -1441,7 +1489,7 @@ import {
   Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download,
 } from 'lucide-vue-next'
 import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
-import { useAgent } from '~/composables/useAgent'
+import { useAgentStream } from '~/composables/useAgentStream'
 import BaseSelect from '~/components/BaseSelect.vue'
 
 definePageMeta({ layout: 'studio' })
@@ -1452,7 +1500,8 @@ const episodeNumber = Number(route.params.episodeNumber)
 
 const drama = ref(null), episode = ref(null), chars = ref([]), scenes = ref([]), sbs = ref([]), mergeData = ref(null)
 const panel = ref('script')
-const { running: rn, runningType: rt, run: runAgent } = useAgent()
+const { progress: agentProgress, runStream: runAgentStream } = useAgentStream()
+const streamType = ref<string | null>(null)
 
 const localRaw = ref(''), localScript = ref('')
 const rawContent = computed(() => episode.value?.content || '')
@@ -1694,13 +1743,13 @@ const gridAssignmentPageSize = computed(() => {
 })
 const gridAssignmentTotalPages = computed(() => Math.max(1, Math.ceil(gridAssignments.value.length / gridAssignmentPageSize.value)))
 const gridAssignmentPageStart = computed(() => gridAssignmentPage.value * gridAssignmentPageSize.value)
-const gridAssignmentPageEnd = computed(() => Math.min(gridAssignments.value.length, gridAssignmentPageStart.value + gridAssignmentPageSize.value))
+const gridAssignmentPageEnd = computed(() => Math.min(gridAssignments.value.length, gridAssignmentPageStastreamType.value + gridAssignmentPageSize.value))
 const pagedGridAssignments = computed(() => {
   return gridAssignments.value
-    .slice(gridAssignmentPageStart.value, gridAssignmentPageEnd.value)
+    .slice(gridAssignmentPageStastreamType.value, gridAssignmentPageEnd.value)
     .map((assignment, offset) => ({
       assignment,
-      index: gridAssignmentPageStart.value + offset,
+      index: gridAssignmentPageStastreamType.value + offset,
     }))
 })
 
@@ -1904,7 +1953,7 @@ function getGridPromptShotIds() {
 }
 
 async function generateGridPrompt() {
-  if (!gridCanStart.value) {
+  if (!gridCanStastreamType.value) {
     toast.warning('请先选择镜头')
     return
   }
@@ -2399,10 +2448,10 @@ const scriptSteps = computed(() => {
   const hasSbs = sbs.value.length > 0
   return [
     { label: '原始内容', state: rawContent.value ? 'done' : 'active', spinning: false },
-    { label: 'AI 改写', state: hasScript ? 'done' : (rawContent.value ? 'active' : ''), spinning: rt.value === 'script_rewriter' },
-    { label: '提取', state: hasChars ? 'done' : (hasScript ? 'active' : ''), spinning: rt.value === 'extractor' },
-    { label: '音色', state: hasVoice ? 'done' : (hasChars ? 'active' : ''), spinning: rt.value === 'voice_assigner' },
-    { label: '分镜', state: hasSbs ? 'done' : (hasVoice ? 'active' : ''), spinning: rt.value === 'storyboard_breaker' },
+    { label: 'AI 改写', state: hasScript ? 'done' : (rawContent.value ? 'active' : ''), spinning: streamType.value === 'script_rewriter' },
+    { label: '提取', state: hasChars ? 'done' : (hasScript ? 'active' : ''), spinning: streamType.value === 'extractor' },
+    { label: '音色', state: hasVoice ? 'done' : (hasChars ? 'active' : ''), spinning: streamType.value === 'voice_assigner' },
+    { label: '分镜', state: hasSbs ? 'done' : (hasVoice ? 'active' : ''), spinning: streamType.value === 'storyboard_breaker' },
   ]
 })
 
@@ -2439,7 +2488,7 @@ async function refresh() {
 
 function saveRaw() { episodeAPI.update(epId.value, { content: localRaw.value }); episode.value.content = localRaw.value }
 function saveScr() { episodeAPI.update(epId.value, { script_content: localScript.value }); episode.value.script_content = localScript.value }
-function doRewrite() { saveRaw(); runAgent('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value, refresh) }
+async function doRewrite() { streamType.value = 'script_rewriter'; saveRaw(); await runAgentStream('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value); streamType.value = null; refresh() }
 function skipRewrite() {
   const raw = (localRaw.value || rawContent.value || '').trim()
   if (!raw) {
@@ -2451,8 +2500,8 @@ function skipRewrite() {
   toast.success('已跳过 AI 改写，当前将直接使用原始内容')
   scriptStep.value = 2
 }
-function doExtract() { saveScr(); runAgent('extractor', '请从剧本中提取所有角色和场景信息，提取时自动与项目已有数据进行去重合并', dramaId, epId.value, refresh) }
-function doVoice() { runAgent('voice_assigner', '请为所有角色分配合适的音色', dramaId, epId.value, refresh) }
+async function doExtract() { streamType.value = 'extractor'; saveScr(); await runAgentStream('extractor', '请从剧本中提取所有角色和场景信息，提取时自动与项目已有数据进行去重合并', dramaId, epId.value); streamType.value = null; refresh() }
+async function doVoice() { streamType.value = 'voice_assigner'; await runAgentStream('voice_assigner', '请为所有角色分配合适的音色', dramaId, epId.value); streamType.value = null; refresh() }
 async function batchGenSamples() {
   const pending = chars.value.filter(c => (c.voice_style || c.voiceStyle) && !(c.voice_sample_url || c.voiceSampleUrl))
   if (!pending.length) {
@@ -2466,10 +2515,13 @@ async function batchGenSamples() {
   if (failCount) toast.error(`${failCount} 份试听文件生成失败`)
   await refresh()
 }
-function doBreakdown() {
+async function doBreakdown() {
+  streamType.value = 'storyboard_breaker'
   const cfg = videoConfigs.value.find(c => c.id === lockedVideoConfigId.value)
   const label = cfg ? `${cfg.name} (${cfg.provider})` : '默认'
-  runAgent('storyboard_breaker', `请拆解分镜并生成视频提示词。视频模型：${label}，请根据该模型的特性和时长限制生成合适的视频提示词。`, dramaId, epId.value, refresh)
+  await runAgentStream('storyboard_breaker', `请拆解分镜并生成视频提示词。视频模型：${label}，请根据该模型的特性和时长限制生成合适的视频提示词。`, dramaId, epId.value)
+  streamType.value = null
+  refresh()
 }
 async function genSample(id) { try { await characterAPI.voiceSample(id, epId.value); toast.success('试听已生成'); refresh() } catch (e) { toast.error(e.message) } }
 async function addShot() { await storyboardAPI.create({ episode_id: epId.value, storyboard_number: sbs.value.length + 1, title: `镜头${sbs.value.length + 1}`, duration: 10 }); refresh() }
@@ -4324,5 +4376,80 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
   .latest-grid-strip-actions {
     justify-content: flex-start;
   }
+}
+
+.agent-progress-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 16px 20px;
+  border-radius: var(--radius);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+}
+.agent-progress-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.agent-step-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+}
+.agent-step-icon {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.agent-step-icon.active { color: var(--accent); }
+.agent-step-icon.done { color: #4caf50; }
+.agent-step-icon.error { color: #f44336; }
+.agent-step-pending-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--text-3);
+}
+.agent-step-label { color: var(--text-1); flex: 1; }
+.agent-step-label.active { color: var(--accent); font-weight: 500; }
+.agent-step-label.done { color: var(--text-2); }
+.agent-step-result {
+  font-size: 11px;
+  color: var(--text-3);
+  max-width: 200px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.agent-progress-text {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: var(--text-2);
+  white-space: pre-wrap;
+  max-height: 200px;
+  overflow-y: auto;
+  line-height: 1.5;
+  padding: 8px 10px;
+  background: var(--bg-2);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+}
+.agent-progress-summary {
+  font-size: 12px;
+  color: #4caf50;
+  font-weight: 500;
+}
+.agent-progress-error {
+  font-size: 12px;
+  color: #f44336;
+  padding: 8px 10px;
+  background: rgba(244, 67, 54, 0.08);
+  border-radius: var(--radius);
 }
 </style>
