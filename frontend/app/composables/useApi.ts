@@ -1,7 +1,7 @@
 const BASE = '/api/v1'
 
-async function req<T = any>(method: string, path: string, body?: any): Promise<T> {
-  const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json' } }
+async function req<T = any>(method: string, path: string, body?: any, init?: RequestInit): Promise<T> {
+  const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json' }, ...init }
   if (body) opts.body = JSON.stringify(body)
 
   const start = performance.now()
@@ -36,10 +36,10 @@ async function req<T = any>(method: string, path: string, body?: any): Promise<T
 }
 
 export const api = {
-  get: <T = any>(p: string) => req<T>('GET', p),
-  post: <T = any>(p: string, b?: any) => req<T>('POST', p, b),
-  put: <T = any>(p: string, b?: any) => req<T>('PUT', p, b),
-  del: <T = any>(p: string) => req<T>('DELETE', p),
+  get: <T = any>(p: string, init?: RequestInit) => req<T>('GET', p, undefined, init),
+  post: <T = any>(p: string, b?: any, init?: RequestInit) => req<T>('POST', p, b, init),
+  put: <T = any>(p: string, b?: any, init?: RequestInit) => req<T>('PUT', p, b, init),
+  del: <T = any>(p: string, init?: RequestInit) => req<T>('DELETE', p, undefined, init),
 }
 
 export const dramaAPI = {

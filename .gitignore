@@ -41,5 +41,11 @@ configs/config.yaml
 tmp/
 temp/
 .superpowers/
+.worktrees/
 /CLAUDE.md
 /AGENTS.md
+/.claude
+/Program.cs
+/docs/plans
+/.gitignore
+/.gitignore

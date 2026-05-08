@@ -1578,9 +1578,15 @@ const lockedImageConfigId = computed(() => episode.value?.image_config_id || epi
 const lockedVideoConfigId = computed(() => episode.value?.video_config_id || episode.value?.videoConfigId || null)
 const lockedAudioConfigId = computed(() => episode.value?.audio_config_id || episode.value?.audioConfigId || null)
 const lockedAudioProvider = computed(() => audioConfigs.value.find(c => c.id === lockedAudioConfigId.value)?.provider || '')
-const lockedImageConfigLabel = computed(() => configLabel(imageConfigs.value.find(c => c.id === lockedImageConfigId.value)))
-const lockedVideoConfigLabel = computed(() => configLabel(videoConfigs.value.find(c => c.id === lockedVideoConfigId.value)))
-const lockedAudioConfigLabel = computed(() => configLabel(audioConfigs.value.find(c => c.id === lockedAudioConfigId.value)))
+const lockedImageConfigLabel = computed(() => configLabel(
+  imageConfigs.value.find(c => c.id === lockedImageConfigId.value) || imageConfigs.value[0]
+))
+const lockedVideoConfigLabel = computed(() => configLabel(
+  videoConfigs.value.find(c => c.id === lockedVideoConfigId.value) || videoConfigs.value[0]
+))
+const lockedAudioConfigLabel = computed(() => configLabel(
+  audioConfigs.value.find(c => c.id === lockedAudioConfigId.value) || audioConfigs.value[0]
+))
 
 // Grid tool state
 const gridDialog = ref(false)
