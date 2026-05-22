@@ -114,23 +114,12 @@ function extractLanguage(voiceId: string, voiceName: string): string {
 }
 
 function shouldKeepVoice(voice: { voice_id: string, voice_name: string }) {
-  const language = extractLanguage(voice.voice_id, voice.voice_name)
-  if (language !== '中文' && language !== '粤语') return false
-
   const text = `${voice.voice_id} ${voice.voice_name}`.toLowerCase()
 
+  // 只排除精品 beta 版本（已有同名正式版），其余全部保留
   const excludedPatterns = [
     'jingpin',
     '-beta',
-    'cartoon_pig',
-    'cute_boy',
-    'lovely_girl',
-    'clever_boy',
-    'robot_armor',
-    'news_anchor',
-    'male_announcer',
-    'radio_host',
-    'hk_flight_attendant',
   ]
 
   return !excludedPatterns.some(pattern => text.includes(pattern))
