@@ -115,6 +115,17 @@
             </div>
             <div class="toolbar-right">
               <span v-if="rawLen" class="char-count">{{ rawLen }} 字</span>
+              <input
+                ref="fileInput"
+                type="file"
+                accept=".txt,.docx,.pdf"
+                style="display:none"
+                @change="handleFileUpload"
+              />
+              <button class="btn btn-sm" @click="fileInput?.click()">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                上传剧本
+              </button>
               <button class="btn btn-sm" @click="saveRaw(); toast.success('已保存')">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
                 保存
@@ -816,13 +827,52 @@
                   <div class="asset-name">{{ c.name }}</div>
                   <div class="asset-meta dim">{{ c.role || '角色' }}</div>
                 </div>
-                <div class="asset-foot">
-                  <span :class="['dot', (c.image_url || c.imageUrl) && 'ok', isPendingCharImage(c.id) && 'pending']" />
-                  <span class="dim" style="font-size:10px">{{ (c.image_url || c.imageUrl) ? '已生成' : (isPendingCharImage(c.id) ? '生成中' : '待生成') }}</span>
-                  <button class="btn btn-sm ml-auto" :disabled="isPendingCharImage(c.id)" @click="genCharImg(c.id)">{{ isPendingCharImage(c.id) ? '生成中' : '生成' }}</button>
+                <div class="asset-foot" style="flex-direction:column;align-items:stretch;gap:6px">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <span :class="['dot', (c.image_url || c.imageUrl) && 'ok', isPendingCharImage(c.id) && 'pending']" />
+                    <span class="dim" style="font-size:10px">{{ (c.image_url || c.imageUrl) ? '已生成' : (isPendingCharImage(c.id) ? '生成中' : '待生成') }}</span>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn btn-sm" style="flex:1" :disabled="isPendingCharImage(c.id)" @click="genCharImg(c.id)">{{ isPendingCharImage(c.id) ? '生成中' : '生成' }}</button>
+                    <button class="btn btn-sm" style="flex:1" title="编辑提示词" @click="openPromptDialog(c)">
+                      <Pencil :size="11" />
+                      提示词
+                    </button>
+                    <button class="btn btn-sm" style="flex:1" title="上传角色图片" @click="openCharUpload(c.id)">
+                      <Upload :size="11" />
+                      上传
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+            <!-- 提示词编辑对话框 -->
+            <div v-if="promptDialogChar" class="overlay" @click.self="promptDialogChar = null">
+              <div class="card" style="width:520px;max-width:95vw;padding:20px">
+                <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:4px">
+                  编辑提示词 · {{ promptDialogChar.name }}
+                </div>
+                <div class="dim" style="font-size:11px;margin-bottom:12px">
+                  修改后点击「使用此提示词生成」将使用自定义提示词调用生图服务
+                </div>
+                <textarea
+                  v-model="promptDraft"
+                  class="textarea"
+                  rows="4"
+                  style="width:100%;resize:vertical"
+                  placeholder="输入自定义提示词..."
+                />
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                  <button class="btn" @click="promptDialogChar = null">取消</button>
+                  <button class="btn btn-primary" @click="doGenCharImg(promptDialogChar.id, promptDraft); promptDialogChar = null">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    使用此提示词生成
+                  </button>
+                </div>
+              </div>
+            </div>
+            <input type="file" ref="charFileInput" accept="image/*" style="display:none"
+              @change="handleCharFileInput(uploadTargetCharId, $event)" />
           </div>
 
           <!-- Sub: Scenes -->
@@ -1487,11 +1537,19 @@
 import { toast } from 'vue-sonner'
 import {
   Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download,
-  Loader2, Check,
+  Loader2, Check, Pencil, Upload,
 } from 'lucide-vue-next'
 import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
 import { useAgentStream } from '~/composables/useAgentStream'
 import BaseSelect from '~/components/BaseSelect.vue'
+import mammoth from 'mammoth'
+import * as pdfjsLib from 'pdfjs-dist'
+
+// PDF.js worker — use the bundled worker from node_modules
+pdfjsLib.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString()
 
 definePageMeta({ layout: 'studio' })
 
@@ -1506,6 +1564,7 @@ const streamType = ref<string | null>(null)
 async function goBack() { await navigateTo(`/drama/${dramaId}`) }
 
 const localRaw = ref(''), localScript = ref('')
+const fileInput = ref<HTMLInputElement | null>(null)
 const rawContent = computed(() => episode.value?.content || '')
 const scriptContent = computed(() => episode.value?.script_content || episode.value?.scriptContent || '')
 const epId = computed(() => episode.value?.id || 0)
@@ -1557,6 +1616,24 @@ const pendingComposeIds = ref([])
 const failedVideoMessages = ref({})
 const failedComposeMessages = ref({})
 const imageViewer = ref({ open: false, src: '', title: '' })
+
+// 提示词编辑对话框
+const promptDialogChar = ref<any>(null)
+const promptDraft = ref('')
+const uploadTargetCharId = ref(0)
+const charFileInput = ref<HTMLInputElement | null>(null)
+
+function charPrompt(c: any) {
+  return `${c.name || ''}, ${c.appearance || c.description || '人物立绘'}, 高质量, 正面, 白色背景`
+}
+function openPromptDialog(c: any) {
+  promptDialogChar.value = c
+  promptDraft.value = charPrompt(c)
+}
+function openCharUpload(id: number) {
+  uploadTargetCharId.value = id
+  charFileInput.value?.click()
+}
 
 function configLabel(config) {
   if (!config) return '未配置'
@@ -2496,6 +2573,53 @@ async function refresh() {
 
 function saveRaw() { episodeAPI.update(epId.value, { content: localRaw.value }); episode.value.content = localRaw.value }
 function saveScr() { episodeAPI.update(epId.value, { script_content: localScript.value }); episode.value.script_content = localScript.value }
+
+async function handleFileUpload(e: Event) {
+  const input = e.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+
+  const ext = file.name.split('.').pop()?.toLowerCase()
+  toast.info(`正在读取 ${file.name}…`)
+
+  try {
+    let text = ''
+    if (ext === 'txt') {
+      text = await file.text()
+    } else if (ext === 'docx') {
+      const arrayBuffer = await file.arrayBuffer()
+      const result = await mammoth.extractRawText({ arrayBuffer })
+      text = result.value
+    } else if (ext === 'pdf') {
+      const arrayBuffer = await file.arrayBuffer()
+      const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+      const pages: string[] = []
+      for (let i = 1; i <= pdf.numPages; i++) {
+        const page = await pdf.getPage(i)
+        const content = await page.getTextContent()
+        const pageText = content.items.map((item: any) => item.str).join(' ')
+        pages.push(pageText)
+      }
+      text = pages.join('\n\n')
+    } else {
+      toast.error('不支持的文件格式，请选择 .txt / .docx / .pdf 文件')
+      return
+    }
+
+    if (!text.trim()) {
+      toast.warning('文件中未检测到文字内容')
+      return
+    }
+
+    localRaw.value = text
+    toast.success(`已读取 ${file.name}（${text.length} 字）`)
+  } catch (err: any) {
+    toast.error(`文件读取失败：${err.message || '未知错误'}`)
+  } finally {
+    // Reset input so the same file can be re-selected
+    input.value = ''
+  }
+}
 async function doRewrite() { streamType.value = 'script_rewriter'; saveRaw(); await runAgentStream('script_rewriter', '请读取剧本并改写为格式化剧本，然后保存', dramaId, epId.value); streamType.value = null; refresh() }
 function skipRewrite() {
   const raw = (localRaw.value || rawContent.value || '').trim()
@@ -2550,9 +2674,12 @@ function watchAsyncResult(check, attempts = 24, delay = 2500, onTimeout) {
 }
 
 async function genCharImg(id) {
+  await doGenCharImg(id)
+}
+async function doGenCharImg(id: number, customPrompt?: string) {
   try {
     if (!isPendingCharImage(id)) pendingCharImageIds.value.push(id)
-    await characterAPI.generateImage(id, epId.value)
+    await characterAPI.generateImage(id, epId.value, customPrompt)
     toast.success('角色图片生成中')
     await refresh()
     watchAsyncResult(() => {
@@ -2568,6 +2695,26 @@ async function genCharImg(id) {
     pendingCharImageIds.value = pendingCharImageIds.value.filter(item => item !== id)
     toast.error(e.message)
   }
+}
+async function uploadCharImage(id: number, file: File) {
+  try {
+    const result = await characterAPI.uploadImage(id, file)
+    const char = chars.value.find(c => c.id === id)
+    if (char) {
+      char.image_url = result.image_url || result.url
+      char.imageUrl = result.image_url || result.url
+    }
+    toast.success('角色图片上传成功')
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+function handleCharFileInput(id: number, event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploadCharImage(id, file)
+  input.value = ''
 }
 function batchCharImages() {
   const ids = visualChars.value.filter(c => !(c.image_url || c.imageUrl)).map(c => c.id)
@@ -2805,10 +2952,10 @@ async function pollVideoGeneration(generationId, storyboardId) {
       const done = !!(target?.video_url || target?.videoUrl)
       if (done) pendingVideoIds.value = pendingVideoIds.value.filter(item => item !== storyboardId)
       return done
-    }, 60, 4000)
+    }, 300, 4000)
     return
   }
-  for (let i = 0; i < 120; i++) {
+  for (let i = 0; i < 900; i++) {
     await sleep(4000)
     try {
       const res = await videoAPI.get(generationId)
@@ -3698,7 +3845,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .dub-audio { flex: 1; min-width: 0; height: 30px; }
 
 /* Asset grid */
-.asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 12px; }
+.asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
 .asset-card {
   display: flex; flex-direction: column; overflow: hidden;
   transition: transform 0.18s var(--ease-out), box-shadow 0.18s var(--ease-out), border-color 0.18s var(--ease-out);
