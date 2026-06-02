@@ -15,6 +15,7 @@ import { createStoryboardTools } from './tools/storyboard-tools.js'
 import { createVoiceTools } from './tools/voice-tools.js'
 import { createGridPromptTools } from './tools/grid-prompt-tools.js'
 import { loadAgentSkills } from './skills.js'
+import { styleZhLabel, styleEnTag, getDramaStyle } from '../utils/style-mapping.js'
 
 // Default prompts (used when DB has no config)
 const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = {
@@ -196,22 +197,54 @@ export function createAgent(type: string, episodeId: number, dramaId: number): A
   const defaults = DEFAULT_PROMPTS[type]
   if (!defaults) return null
 
+  // Load drama style for style-aware agents
+  const dramaStyle = getDramaStyle(dramaId)
+
   const dbConfig = getAgentConfig(type)
   const model = getModel(dbConfig)
   const baseInstructions = dbConfig?.systemPrompt?.trim() || defaults.instructions
   const skillInstructions = loadAgentSkills(type)
-  const instructions = skillInstructions
+  let instructions = skillInstructions
     ? [baseInstructions, '', skillInstructions].join('\n')
     : baseInstructions
+
+  // Append visual style instruction for grid_prompt_generator
+  if (type === 'grid_prompt_generator' && dramaStyle) {
+    const zhStyle = styleZhLabel(dramaStyle)
+    const enStyle = styleEnTag(dramaStyle)
+    instructions = [
+      instructions,
+      '',
+      `## 当前项目视觉风格`,
+      `项目的视觉风格设定为 **${zhStyle}**（${enStyle}）。`,
+      '- 所有角色、场景、宫格图提示词必须使用此风格替换通用的 cinematic/电影级，不得硬编码其他风格。',
+      `- 角色提示词使用「${enStyle} portrait」替代「cinematic portrait」。`,
+      `- 场景提示词使用「${enStyle} scene」替代「cinematic scene」。`,
+      `- 宫格图提示词使用「${enStyle} quality」替代「cinematic quality」。`,
+    ].join('\n')
+  }
+
+  // Append visual style note for storyboard_breaker
+  if (type === 'storyboard_breaker' && dramaStyle) {
+    const zhStyle = styleZhLabel(dramaStyle)
+    instructions = [
+      instructions,
+      '',
+      `## 当前项目视觉风格`,
+      `项目的视觉风格设定为 **${zhStyle}**。`,
+      '所有 image_prompt、video_prompt 中的画面描述应使用此风格标签，而非默认的电影级/写实风格。',
+    ].join('\n')
+  }
+
   const name = dbConfig?.name || defaults.name
 
   let tools: Record<string, any> = {}
   switch (type) {
     case 'script_rewriter': tools = createScriptTools(episodeId); break
     case 'extractor': tools = createExtractTools(episodeId, dramaId); break
-    case 'storyboard_breaker': tools = createStoryboardTools(episodeId, dramaId); break
+    case 'storyboard_breaker': tools = createStoryboardTools(episodeId, dramaId, dramaStyle); break
     case 'voice_assigner': tools = createVoiceTools(episodeId, dramaId); break
-    case 'grid_prompt_generator': tools = createGridPromptTools(episodeId, dramaId); break
+    case 'grid_prompt_generator': tools = createGridPromptTools(episodeId, dramaId, dramaStyle); break
     default: return null
   }
 

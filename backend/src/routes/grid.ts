@@ -6,6 +6,7 @@ import { generateImage } from '../services/image-generation.js'
 import { splitGridImage } from '../services/grid-split.js'
 import { createAgent } from '../agents/index.js'
 import { logTaskError, logTaskPayload, logTaskProgress } from '../utils/task-logger.js'
+import { styleZhLabel, styleEnTag, getDramaStyle } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -141,7 +142,7 @@ function buildGridPrompt(
   dramaStyle: string,
   referenceAssets: Array<{ path: string; label: string; kind: string; imageLabel: string }>,
 ): string {
-  const style = dramaStyle || 'cinematic'
+  const style = styleEnTag(dramaStyle)
   const storyboardCharacterIds = getStoryboardCharacterIds(storyboards.map((sb) => sb.id))
   const legend = buildReferenceLegend(referenceAssets)
 
@@ -220,9 +221,11 @@ function buildGridCellPrompts(
   rows: number,
   cols: number,
   referenceAssets: Array<{ path: string; label: string; kind: string; imageLabel: string }>,
+  dramaStyle?: string,
 ) {
   if (!storyboards.length) return []
   const storyboardCharacterIds = getStoryboardCharacterIds(storyboards.map((sb) => sb.id))
+  const styleTag = styleEnTag(dramaStyle)
 
   if (mode === 'multi_ref') {
     const sb = storyboards[0]
@@ -241,7 +244,7 @@ function buildGridCellPrompts(
     return Array.from({ length: rows * cols }, (_, i) => ({
       shot_number: sb.storyboardNumber,
       frame_type: 'reference',
-      prompt: `${cellLabel(i, rows, cols)}: ${buildStoryboardReferenceHints(sb, referenceAssets, storyboardCharacterIds).join('、')}${buildStoryboardReferenceHints(sb, referenceAssets, storyboardCharacterIds).length ? '，' : ''}${desc}, ${angles[i % angles.length]}`,
+      prompt: `${cellLabel(i, rows, cols)}: ${buildStoryboardReferenceHints(sb, referenceAssets, storyboardCharacterIds).join('、')}${buildStoryboardReferenceHints(sb, referenceAssets, storyboardCharacterIds).length ? '，' : ''}${desc}, ${angles[i % angles.length]}, ${styleTag}`,
     }))
   }
 
@@ -256,8 +259,8 @@ function buildGridCellPrompts(
         shot_number: sb.storyboardNumber,
         frame_type: isFirst ? 'first_frame' : 'last_frame',
         prompt: isFirst
-          ? `${cellLabel(i, rows, cols)}，首帧：${refs.length ? `参考${refs.join('、')}，` : ''}${desc}${sb.location ? `, ${sb.location}` : ''}${sb.shotType ? `, ${sb.shotType}` : ''}`
-          : `${cellLabel(i, rows, cols)}，尾帧：${refs.length ? `参考${refs.join('、')}，` : ''}${desc}${motion ? `, ${motion}` : ''}${sb.location ? `, ${sb.location}` : ''}${sb.shotType ? `, ${sb.shotType}` : ''}`,
+          ? `${cellLabel(i, rows, cols)}，首帧：${refs.length ? `参考${refs.join('、')}，` : ''}${desc}${sb.location ? `, ${sb.location}` : ''}${sb.shotType ? `, ${sb.shotType}` : ''}, ${styleTag}`
+          : `${cellLabel(i, rows, cols)}，尾帧：${refs.length ? `参考${refs.join('、')}，` : ''}${desc}${motion ? `, ${motion}` : ''}${sb.location ? `, ${sb.location}` : ''}${sb.shotType ? `, ${sb.shotType}` : ''}, ${styleTag}`,
       }
     })
   }
@@ -268,7 +271,7 @@ function buildGridCellPrompts(
     return {
       shot_number: sb.storyboardNumber,
       frame_type: 'first_frame',
-      prompt: `${cellLabel(index, rows, cols)}：${refs.length ? `参考${refs.join('、')}，` : ''}${desc}${sb.location ? `, ${sb.location}` : ''}${sb.shotType ? `, ${sb.shotType}` : ''}, opening scene`,
+      prompt: `${cellLabel(index, rows, cols)}：${refs.length ? `参考${refs.join('、')}，` : ''}${desc}${sb.location ? `, ${sb.location}` : ''}${sb.shotType ? `, ${sb.shotType}` : ''}, opening scene, ${styleTag}`,
     }
   })
 }
@@ -352,9 +355,16 @@ async function tryAgentGridPrompt(
   cols: number,
   mode: string,
   referenceLegend: string,
+  dramaStyle?: string,
 ) {
   const agent = createAgent('grid_prompt_generator', episodeId, dramaId)
   if (!agent) return null
+
+  const zhStyle = styleZhLabel(dramaStyle)
+  const enStyle = styleEnTag(dramaStyle)
+  const styleNote = dramaStyle
+    ? `当前项目视觉风格：${zhStyle}（${enStyle}）。所有提示词必须使用此风格标签，不得使用通用的 cinematic。`
+    : ''
 
   const result = await agent.generate(
     [{
@@ -366,10 +376,11 @@ async function tryAgentGridPrompt(
         `列数：${cols}`,
         `模式：${mode}`,
         referenceLegend ? `参考图映射：${referenceLegend}` : '',
+        styleNote,
         '当提示词涉及到某个角色或场景时，直接把对应的图片编号写进提示词，例如：图片1中的角色A站了起来，图片3中的房间场景。不要只写名字，不写图片编号。',
         `必须严格按 ${rows}x${cols} 生成，总共 exactly ${rows * cols} visible panels。不要合并格子，不要缺格。`,
         '必须返回 JSON，结构为：{"grid_prompt":"...","cell_prompts":[{"shot_number":1,"frame_type":"first_frame","prompt":"..."}]}',
-      ].join('\n'),
+      ].filter(Boolean).join('\n'),
     }],
     { maxSteps: 10 },
   )
@@ -405,11 +416,7 @@ app.post('/prompt', async (c) => {
 
   if (!storyboards.length) return badRequest(c, 'No storyboards found')
 
-  let dramaStyle = ''
-  if (drama_id) {
-    const [drama] = db.select().from(schema.dramas).where(eq(schema.dramas.id, drama_id)).all()
-    dramaStyle = drama?.style || ''
-  }
+  const dramaStyle = getDramaStyle(Number(drama_id || 0)) || ''
 
   const actualCols = cols
   const actualRows = rows
@@ -430,6 +437,7 @@ app.post('/prompt', async (c) => {
       actualCols,
       mode,
       referenceLegend,
+      dramaStyle,
     )
 
     if (agentPayload?.grid_prompt) {
@@ -459,7 +467,7 @@ app.post('/prompt', async (c) => {
   }
 
   const gridPrompt = buildGridPrompt(mode, storyboards, actualRows, actualCols, dramaStyle, referenceAssets)
-  const cellPrompts = buildGridCellPrompts(mode, storyboards, actualRows, actualCols, referenceAssets)
+  const cellPrompts = buildGridCellPrompts(mode, storyboards, actualRows, actualCols, referenceAssets, dramaStyle)
   logTaskProgress('GridPrompt', 'fallback-used', {
     episodeId: resolvedEpisodeId,
     dramaId: drama_id,
@@ -502,11 +510,7 @@ app.post('/generate', async (c) => {
   if (!storyboards.length) return badRequest(c, 'No storyboards found')
 
   // Get drama style
-  let dramaStyle = ''
-  if (drama_id) {
-    const [drama] = db.select().from(schema.dramas).where(eq(schema.dramas.id, drama_id)).all()
-    dramaStyle = drama?.style || ''
-  }
+  const dramaStyle = getDramaStyle(Number(drama_id || 0)) || ''
 
   const referenceAssets = collectGridReferenceAssets(storyboards)
   const prompt = custom_prompt || buildGridPrompt(mode, storyboards, rows, cols, dramaStyle, referenceAssets)

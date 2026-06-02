@@ -4,6 +4,7 @@ import { db, schema } from '../db/index.js'
 import { success, created, badRequest } from '../utils/response.js'
 import { generateVideo } from '../services/video-generation.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { getDramaStyle, styleEnTag } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -13,6 +14,18 @@ app.post('/', async (c) => {
   if (!body.prompt) return badRequest(c, 'prompt is required')
 
   try {
+    // Inject drama visual style into prompt if drama_id provided
+    let prompt = body.prompt
+    if (body.drama_id) {
+      const dramaStyle = getDramaStyle(Number(body.drama_id))
+      if (dramaStyle) {
+        const styleTag = styleEnTag(dramaStyle)
+        if (!prompt.toLowerCase().includes(styleTag.toLowerCase().split(',')[0])) {
+          prompt = `${prompt}, ${styleTag}`
+        }
+      }
+    }
+
     let configId: number | undefined = body.config_id
     if (body.storyboard_id) {
       const [sb] = db.select().from(schema.storyboards).where(eq(schema.storyboards.id, Number(body.storyboard_id))).all()
@@ -32,7 +45,7 @@ app.post('/', async (c) => {
     const id = await generateVideo({
       storyboardId: body.storyboard_id,
       dramaId: body.drama_id,
-      prompt: body.prompt,
+      prompt,
       model: body.model,
       referenceMode: body.reference_mode,
       imageUrl: body.image_url,

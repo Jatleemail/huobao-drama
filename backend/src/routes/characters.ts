@@ -4,7 +4,9 @@ import { db, schema } from '../db/index.js'
 import { success, badRequest, now } from '../utils/response.js'
 import { generateVoiceSample } from '../services/tts-generation.js'
 import { generateImage } from '../services/image-generation.js'
+import { saveUploadedFile } from '../utils/storage.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
+import { stylePortrait, getDramaStyle } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -69,9 +71,13 @@ app.post('/:id/generate-image', async (c) => {
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
 
-  const prompt = `${char.name}, ${char.appearance || char.description || '人物立绘'}, 高质量, 正面, 白色背景`
+  // Load drama style
+  const dramaStyle = getDramaStyle(char.dramaId)
+  const styleTag = stylePortrait(dramaStyle)
+
+  const prompt = body.prompt || `${char.name}, ${char.appearance || char.description || '人物立绘'}, ${styleTag}, high quality, no text, no watermark`
   try {
-    logTaskStart('CharacterImage', 'generate', { characterId: id, episodeId: ep.id, dramaId: char.dramaId })
+    logTaskStart('CharacterImage', 'generate', { characterId: id, episodeId: ep.id, dramaId: char.dramaId, style: dramaStyle })
     const genId = await generateImage({ characterId: id, dramaId: char.dramaId, prompt, configId: ep.imageConfigId ?? undefined })
     logTaskSuccess('CharacterImage', 'generate', { characterId: id, generationId: genId })
     return success(c, { image_generation_id: genId })
@@ -79,6 +85,26 @@ app.post('/:id/generate-image', async (c) => {
     logTaskError('CharacterImage', 'generate', { characterId: id, error: err.message })
     return badRequest(c, err.message)
   }
+})
+
+// POST /characters/:id/upload-image — 上传角色形象图片
+app.post('/:id/upload-image', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [char] = db.select().from(schema.characters).where(eq(schema.characters.id, id)).all()
+  if (!char) return badRequest(c, 'Character not found')
+
+  const body = await c.req.parseBody()
+  const file = body['file']
+  if (!file || !(file instanceof File)) return badRequest(c, 'file is required')
+
+  const buffer = await file.arrayBuffer()
+  const localPath = await saveUploadedFile(buffer, 'images', file.name)
+  db.update(schema.characters)
+    .set({ imageUrl: localPath, updatedAt: now() })
+    .where(eq(schema.characters.id, id))
+    .run()
+  logTaskSuccess('CharacterImage', 'upload', { characterId: id, path: localPath })
+  return success(c, { image_url: localPath, url: `/${localPath}` })
 })
 
 // POST /characters/batch-generate-images
@@ -89,14 +115,22 @@ app.post('/batch-generate-images', async (c) => {
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
   const results: number[] = []
+  // Load drama style once from first character's dramaId
+  let dramaStyle: string | undefined
   for (const cid of ids) {
     const [char] = db.select().from(schema.characters).where(eq(schema.characters.id, cid)).all()
     if (!char) continue
-    const prompt = `${char.name}, ${char.appearance || char.description || '人物立绘'}, 高质量, 正面, 白色背景`
+    if (dramaStyle === undefined) {
+      dramaStyle = getDramaStyle(char.dramaId)
+    }
+    const styleTag = stylePortrait(dramaStyle)
+    const prompt = `${char.name}, ${char.appearance || char.description || '人物立绘'}, ${styleTag}, high quality, no text, no watermark`
     try {
       const genId = await generateImage({ characterId: cid, dramaId: char.dramaId, prompt, configId: ep.imageConfigId ?? undefined })
       results.push(genId)
-    } catch {}
+    } catch (err: any) {
+      logTaskError('CharacterImage', 'batch-item-failed', { characterId: cid, error: err.message })
+    }
   }
   logTaskSuccess('CharacterImage', 'batch-generate', { episodeId: ep.id, requested: ids.length, started: results.length })
   return success(c, { count: results.length, ids: results })
