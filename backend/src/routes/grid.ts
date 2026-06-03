@@ -6,7 +6,7 @@ import { generateImage } from '../services/image-generation.js'
 import { splitGridImage } from '../services/grid-split.js'
 import { createAgent } from '../agents/index.js'
 import { logTaskError, logTaskPayload, logTaskProgress } from '../utils/task-logger.js'
-import { styleZhLabel, styleEnTag, getDramaStyle } from '../utils/style-mapping.js'
+import { styleZhLabel, styleEnTag, getDramaStyle, getGridCellSize, getDramaVisualSettings } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -509,15 +509,17 @@ app.post('/generate', async (c) => {
 
   if (!storyboards.length) return badRequest(c, 'No storyboards found')
 
-  // Get drama style
-  const dramaStyle = getDramaStyle(Number(drama_id || 0)) || ''
+  // Get drama style and aspect ratio
+  const dramaIdNum = Number(drama_id || 0)
+  const { style: dramaStyle, aspectRatio: dramaRatio } = getDramaVisualSettings(dramaIdNum)
+  const cellSize = getGridCellSize(dramaRatio)
 
   const referenceAssets = collectGridReferenceAssets(storyboards)
-  const prompt = custom_prompt || buildGridPrompt(mode, storyboards, rows, cols, dramaStyle, referenceAssets)
+  const prompt = custom_prompt || buildGridPrompt(mode, storyboards, rows, cols, dramaStyle || '', referenceAssets)
   const referenceImages = referenceAssets.map((asset) => asset.path)
 
-  // Size: first_last mode uses Nx2 layout
-  const cellW = 960, cellH = 540
+  // Size: use drama aspect ratio for cell dimensions
+  const cellW = cellSize.w, cellH = cellSize.h
   const actualCols = cols
   const actualRows = rows
   const size = `${cellW * actualCols}x${cellH * actualRows}`

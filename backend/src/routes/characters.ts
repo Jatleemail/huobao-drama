@@ -6,7 +6,7 @@ import { generateVoiceSample } from '../services/tts-generation.js'
 import { generateImage } from '../services/image-generation.js'
 import { saveUploadedFile } from '../utils/storage.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
-import { stylePortrait, getDramaStyle } from '../utils/style-mapping.js'
+import { stylePortrait, aspectRatioToSize, getDramaVisualSettings } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -71,14 +71,15 @@ app.post('/:id/generate-image', async (c) => {
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
 
-  // Load drama style
-  const dramaStyle = getDramaStyle(char.dramaId)
+  // Load drama visual settings (style + aspect ratio in one query)
+  const { style: dramaStyle, aspectRatio } = getDramaVisualSettings(char.dramaId)
   const styleTag = stylePortrait(dramaStyle)
+  const size = aspectRatioToSize(aspectRatio)
 
   const prompt = body.prompt || `${char.name}, ${char.appearance || char.description || '人物立绘'}, ${styleTag}, high quality, no text, no watermark`
   try {
-    logTaskStart('CharacterImage', 'generate', { characterId: id, episodeId: ep.id, dramaId: char.dramaId, style: dramaStyle })
-    const genId = await generateImage({ characterId: id, dramaId: char.dramaId, prompt, configId: ep.imageConfigId ?? undefined })
+    logTaskStart('CharacterImage', 'generate', { characterId: id, episodeId: ep.id, dramaId: char.dramaId, style: dramaStyle, aspectRatio })
+    const genId = await generateImage({ characterId: id, dramaId: char.dramaId, prompt, size, configId: ep.imageConfigId ?? undefined })
     logTaskSuccess('CharacterImage', 'generate', { characterId: id, generationId: genId })
     return success(c, { image_generation_id: genId })
   } catch (err: any) {
@@ -115,18 +116,21 @@ app.post('/batch-generate-images', async (c) => {
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
   const results: number[] = []
-  // Load drama style once from first character's dramaId
+  // Load drama visual settings once from first character's dramaId
   let dramaStyle: string | undefined
+  let dramaSize: string | undefined
   for (const cid of ids) {
     const [char] = db.select().from(schema.characters).where(eq(schema.characters.id, cid)).all()
     if (!char) continue
     if (dramaStyle === undefined) {
-      dramaStyle = getDramaStyle(char.dramaId)
+      const settings = getDramaVisualSettings(char.dramaId)
+      dramaStyle = settings.style
+      dramaSize = aspectRatioToSize(settings.aspectRatio)
     }
     const styleTag = stylePortrait(dramaStyle)
     const prompt = `${char.name}, ${char.appearance || char.description || '人物立绘'}, ${styleTag}, high quality, no text, no watermark`
     try {
-      const genId = await generateImage({ characterId: cid, dramaId: char.dramaId, prompt, configId: ep.imageConfigId ?? undefined })
+      const genId = await generateImage({ characterId: cid, dramaId: char.dramaId, prompt, size: dramaSize, configId: ep.imageConfigId ?? undefined })
       results.push(genId)
     } catch (err: any) {
       logTaskError('CharacterImage', 'batch-item-failed', { characterId: cid, error: err.message })

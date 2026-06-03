@@ -4,7 +4,7 @@ import { db, schema } from '../db/index.js'
 import { success, created, badRequest } from '../utils/response.js'
 import { generateVideo } from '../services/video-generation.js'
 import { logTaskError, logTaskPayload, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
-import { getDramaStyle, styleEnTag } from '../utils/style-mapping.js'
+import { getDramaStyle, styleEnTag, getDramaAspectRatio } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -14,8 +14,9 @@ app.post('/', async (c) => {
   if (!body.prompt) return badRequest(c, 'prompt is required')
 
   try {
-    // Inject drama visual style into prompt if drama_id provided
+    // Inject drama visual style and aspect ratio if drama_id provided
     let prompt = body.prompt
+    let aspectRatio: string | undefined = body.aspect_ratio
     if (body.drama_id) {
       const dramaStyle = getDramaStyle(Number(body.drama_id))
       if (dramaStyle) {
@@ -23,6 +24,10 @@ app.post('/', async (c) => {
         if (!prompt.toLowerCase().includes(styleTag.toLowerCase().split(',')[0])) {
           prompt = `${prompt}, ${styleTag}`
         }
+      }
+      // Override aspect ratio from drama if not explicitly provided
+      if (!aspectRatio) {
+        aspectRatio = getDramaAspectRatio(Number(body.drama_id))
       }
     }
 
@@ -53,7 +58,7 @@ app.post('/', async (c) => {
       lastFrameUrl: body.last_frame_url,
       referenceImageUrls: body.reference_image_urls,
       duration: body.duration,
-      aspectRatio: body.aspect_ratio,
+      aspectRatio,
       configId,
     })
 

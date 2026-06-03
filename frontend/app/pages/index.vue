@@ -111,10 +111,14 @@
               <input v-model.number="form.total_episodes" class="input" type="number" min="1" max="100" />
             </label>
             <label class="field">
-              <span class="field-label">视觉风格</span>
-              <BaseSelect v-model="form.style" :options="styleSelectOptions" placeholder="选择风格" searchable />
+              <span class="field-label">视频比例</span>
+              <BaseSelect v-model="form.aspect_ratio" :options="aspectRatioOptions" placeholder="16:9" />
             </label>
           </div>
+          <label class="field">
+            <span class="field-label">视觉风格</span>
+            <BaseSelect v-model="form.style" :options="styleSelectOptions" placeholder="选择风格" searchable />
+          </label>
           <div class="modal-actions">
             <button type="button" class="btn" @click="showCreate = false">取消</button>
             <button type="submit" class="btn btn-primary">
@@ -138,7 +142,7 @@ import BaseSelect from '~/components/BaseSelect.vue'
 const dramas = ref([])
 const loading = ref(false)
 const showCreate = ref(false)
-const form = ref({ title: '', total_episodes: 1, style: '' })
+const form = ref({ title: '', total_episodes: 1, style: '', aspect_ratio: '16:9' })
 const styleLabels = {
   realistic: '写实',
   anime: '动漫',
@@ -149,6 +153,10 @@ const styleLabels = {
 }
 const styles = ['realistic', 'anime', 'ghibli', 'cinematic', 'comic', 'watercolor']
 const styleSelectOptions = computed(() => styles.map(s => ({ label: styleLabels[s], value: s })))
+const aspectRatioOptions = [
+  { label: '16:9 横屏', value: '16:9' },
+  { label: '9:16 竖屏', value: '9:16' },
+]
 
 async function load() {
   loading.value = true

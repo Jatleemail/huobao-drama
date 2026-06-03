@@ -4,7 +4,7 @@ import { db, schema } from '../db/index.js'
 import { success, created, badRequest, now } from '../utils/response.js'
 import { generateImage } from '../services/image-generation.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
-import { styleScene, getDramaStyle } from '../utils/style-mapping.js'
+import { styleScene, aspectRatioToSize, getDramaVisualSettings } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -48,15 +48,16 @@ app.post('/:id/generate-image', async (c) => {
   const [ep] = db.select().from(schema.episodes).where(eq(schema.episodes.id, Number(body.episode_id))).all()
   if (!ep) return badRequest(c, 'Episode not found')
 
-  // Load drama style
-  const dramaStyle = getDramaStyle(scene.dramaId)
+  // Load drama visual settings (style + aspect ratio in one query)
+  const { style: dramaStyle, aspectRatio } = getDramaVisualSettings(scene.dramaId)
   const styleTag = styleScene(dramaStyle)
+  const size = aspectRatioToSize(aspectRatio)
 
   const prompt = scene.prompt || `${scene.location}, ${scene.time || ''}, ${styleTag}, atmospheric lighting, high quality, no text, no watermark`
   try {
-    logTaskStart('SceneImage', 'generate', { sceneId: id, episodeId: ep.id, dramaId: scene.dramaId, location: scene.location, style: dramaStyle })
+    logTaskStart('SceneImage', 'generate', { sceneId: id, episodeId: ep.id, dramaId: scene.dramaId, location: scene.location, style: dramaStyle, aspectRatio })
     db.update(schema.scenes).set({ status: 'processing', updatedAt: now() }).where(eq(schema.scenes.id, id)).run()
-    const genId = await generateImage({ sceneId: id, dramaId: scene.dramaId, prompt, configId: ep.imageConfigId ?? undefined })
+    const genId = await generateImage({ sceneId: id, dramaId: scene.dramaId, prompt, size, configId: ep.imageConfigId ?? undefined })
     logTaskSuccess('SceneImage', 'generate', { sceneId: id, generationId: genId })
     return success(c, { image_generation_id: genId })
   } catch (err: any) {

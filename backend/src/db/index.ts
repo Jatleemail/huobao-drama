@@ -21,6 +21,7 @@ sqlite.exec(`
     description TEXT,
     genre TEXT,
     style TEXT DEFAULT 'realistic',
+    aspect_ratio TEXT DEFAULT '16:9',
     total_episodes INTEGER DEFAULT 1,
     total_duration INTEGER DEFAULT 0,
     status TEXT NOT NULL DEFAULT 'draft',
@@ -355,6 +356,7 @@ function ensureColumn(table: string, column: string, definition: string) {
   }
 }
 
+ensureColumn('dramas', 'aspect_ratio', "TEXT DEFAULT '16:9'")
 ensureColumn('episodes', 'image_config_id', 'INTEGER')
 ensureColumn('episodes', 'video_config_id', 'INTEGER')
 ensureColumn('episodes', 'audio_config_id', 'INTEGER')

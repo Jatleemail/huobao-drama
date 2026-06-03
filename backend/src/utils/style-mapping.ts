@@ -83,3 +83,34 @@ export function getDramaStyle(dramaId: number): string | undefined {
   const [drama] = db.select().from(schema.dramas).where(eq(schema.dramas.id, dramaId)).all()
   return drama?.style || undefined
 }
+
+// ─── 视频比例 ───────────────────────────────────────
+
+export type AspectRatio = '16:9' | '9:16'
+
+/** Convert aspect ratio to image generation size string */
+export function aspectRatioToSize(aspectRatio?: string | null): string {
+  return aspectRatio === '9:16' ? '1080x1920' : '1920x1080'
+}
+
+/** Get grid cell pixel dimensions for a given aspect ratio */
+export function getGridCellSize(aspectRatio?: string | null): { w: number; h: number } {
+  return aspectRatio === '9:16' ? { w: 540, h: 960 } : { w: 960, h: 540 }
+}
+
+/** Load drama aspect ratio from DB */
+export function getDramaAspectRatio(dramaId: number): string {
+  if (!dramaId) return '16:9'
+  const [drama] = db.select().from(schema.dramas).where(eq(schema.dramas.id, dramaId)).all()
+  return drama?.aspectRatio || '16:9'
+}
+
+/** Load drama aspect ratio and style together (single DB query) */
+export function getDramaVisualSettings(dramaId: number): { aspectRatio: string; style?: string } {
+  if (!dramaId) return { aspectRatio: '16:9', style: undefined }
+  const [drama] = db.select().from(schema.dramas).where(eq(schema.dramas.id, dramaId)).all()
+  return {
+    aspectRatio: drama?.aspectRatio || '16:9',
+    style: drama?.style || undefined,
+  }
+}

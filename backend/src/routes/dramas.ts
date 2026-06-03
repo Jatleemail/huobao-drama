@@ -57,6 +57,7 @@ app.post('/', async (c) => {
     description: body.description,
     genre: body.genre,
     style: body.style,
+    aspectRatio: body.aspect_ratio || '16:9',
     tags: body.tags ? JSON.stringify(body.tags) : null,
     metadata: body.metadata,
     status: 'draft',
@@ -130,6 +131,7 @@ app.put('/:id', async (c) => {
   if (body.description !== undefined) updates.description = body.description
   if (body.genre !== undefined) updates.genre = body.genre
   if (body.style !== undefined) updates.style = body.style
+  if (body.aspect_ratio !== undefined) updates.aspectRatio = body.aspect_ratio
   if (body.status !== undefined) updates.status = body.status
   if (body.tags !== undefined) updates.tags = JSON.stringify(body.tags)
   if (body.metadata !== undefined) updates.metadata = body.metadata
