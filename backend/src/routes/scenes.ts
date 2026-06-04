@@ -3,6 +3,7 @@ import { eq } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, created, badRequest, now } from '../utils/response.js'
 import { generateImage } from '../services/image-generation.js'
+import { saveUploadedFile } from '../utils/storage.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
 import { styleScene, aspectRatioToSize, getDramaVisualSettings } from '../utils/style-mapping.js'
 
@@ -53,7 +54,7 @@ app.post('/:id/generate-image', async (c) => {
   const styleTag = styleScene(dramaStyle)
   const size = aspectRatioToSize(aspectRatio)
 
-  const prompt = scene.prompt || `${scene.location}, ${scene.time || ''}, ${styleTag}, atmospheric lighting, high quality, no text, no watermark`
+  const prompt = body.prompt || scene.prompt || `${scene.location}, ${scene.time || ''}, ${styleTag}, atmospheric lighting, high quality, no text, no watermark`
   try {
     logTaskStart('SceneImage', 'generate', { sceneId: id, episodeId: ep.id, dramaId: scene.dramaId, location: scene.location, style: dramaStyle, aspectRatio })
     db.update(schema.scenes).set({ status: 'processing', updatedAt: now() }).where(eq(schema.scenes.id, id)).run()
@@ -65,6 +66,26 @@ app.post('/:id/generate-image', async (c) => {
     db.update(schema.scenes).set({ status: 'failed', updatedAt: now() }).where(eq(schema.scenes.id, id)).run()
     return badRequest(c, err.message)
   }
+})
+
+// POST /scenes/:id/upload-image — 上传场景图片
+app.post('/:id/upload-image', async (c) => {
+  const id = Number(c.req.param('id'))
+  const [scene] = db.select().from(schema.scenes).where(eq(schema.scenes.id, id)).all()
+  if (!scene) return badRequest(c, 'Scene not found')
+
+  const body = await c.req.parseBody()
+  const file = body['file']
+  if (!file || !(file instanceof File)) return badRequest(c, 'file is required')
+
+  const buffer = await file.arrayBuffer()
+  const localPath = await saveUploadedFile(buffer, 'images', file.name)
+  db.update(schema.scenes)
+    .set({ imageUrl: localPath, updatedAt: now() })
+    .where(eq(schema.scenes.id, id))
+    .run()
+  logTaskSuccess('SceneImage', 'upload', { sceneId: id, path: localPath })
+  return success(c, { image_url: localPath, url: `/${localPath}` })
 })
 
 // DELETE /scenes/:id

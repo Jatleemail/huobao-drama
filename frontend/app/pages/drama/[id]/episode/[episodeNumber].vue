@@ -905,13 +905,52 @@
                   <div class="asset-name">{{ s.location }}</div>
                   <div class="asset-meta dim">{{ s.time || '—' }}</div>
                 </div>
-                <div class="asset-foot">
-                  <span :class="['dot', (s.image_url || s.imageUrl) && 'ok', isPendingSceneImage(s.id) && 'pending']" />
-                  <span class="dim" style="font-size:10px">{{ (s.image_url || s.imageUrl) ? '已生成' : (isPendingSceneImage(s.id) ? '生成中' : '待生成') }}</span>
-                  <button class="btn btn-sm ml-auto" :disabled="isPendingSceneImage(s.id)" @click="genSceneImg(s.id)">{{ isPendingSceneImage(s.id) ? '生成中' : '生成' }}</button>
+                <div class="asset-foot" style="flex-direction:column;align-items:stretch;gap:6px">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <span :class="['dot', (s.image_url || s.imageUrl) && 'ok', isPendingSceneImage(s.id) && 'pending']" />
+                    <span class="dim" style="font-size:10px">{{ (s.image_url || s.imageUrl) ? '已生成' : (isPendingSceneImage(s.id) ? '生成中' : '待生成') }}</span>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn btn-sm" style="flex:1" :disabled="isPendingSceneImage(s.id)" @click="genSceneImg(s.id)">{{ isPendingSceneImage(s.id) ? '生成中' : '生成' }}</button>
+                    <button class="btn btn-sm" style="flex:1" title="编辑提示词" @click="openScenePromptDialog(s)">
+                      <Pencil :size="11" />
+                      提示词
+                    </button>
+                    <button class="btn btn-sm" style="flex:1" title="上传场景图片" @click="openSceneUpload(s.id)">
+                      <Upload :size="11" />
+                      上传
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
+            <!-- 场景提示词编辑对话框 -->
+            <div v-if="promptDialogScene" class="overlay" @click.self="promptDialogScene = null">
+              <div class="card" style="width:520px;max-width:95vw;padding:20px">
+                <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:4px">
+                  编辑提示词 · {{ promptDialogScene.location }}
+                </div>
+                <div class="dim" style="font-size:11px;margin-bottom:12px">
+                  修改后点击「使用此提示词生成」将使用自定义提示词调用生图服务
+                </div>
+                <textarea
+                  v-model="scenePromptDraft"
+                  class="textarea"
+                  rows="4"
+                  style="width:100%;resize:vertical"
+                  placeholder="输入自定义提示词..."
+                />
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                  <button class="btn" @click="promptDialogScene = null">取消</button>
+                  <button class="btn btn-primary" @click="doGenSceneImg(promptDialogScene.id, scenePromptDraft); promptDialogScene = null">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    使用此提示词生成
+                  </button>
+                </div>
+              </div>
+            </div>
+            <input type="file" ref="sceneFileInput" accept="image/*" style="display:none"
+              @change="handleSceneFileInput(uploadTargetSceneId, $event)" />
           </div>
 
           <!-- Sub: Dubbing -->
@@ -1623,6 +1662,12 @@ const promptDraft = ref('')
 const uploadTargetCharId = ref(0)
 const charFileInput = ref<HTMLInputElement | null>(null)
 
+// 场景提示词编辑对话框
+const promptDialogScene = ref<any>(null)
+const scenePromptDraft = ref('')
+const uploadTargetSceneId = ref(0)
+const sceneFileInput = ref<HTMLInputElement | null>(null)
+
 function charPrompt(c: any) {
   return `${c.name || ''}, ${c.appearance || c.description || '人物立绘'}, 高质量, 正面, 白色背景`
 }
@@ -1633,6 +1678,18 @@ function openPromptDialog(c: any) {
 function openCharUpload(id: number) {
   uploadTargetCharId.value = id
   charFileInput.value?.click()
+}
+
+function scenePrompt(s: any) {
+  return s.prompt || `${s.location}, ${s.time || ''}, atmospheric lighting, high quality, no text, no watermark`
+}
+function openScenePromptDialog(s: any) {
+  promptDialogScene.value = s
+  scenePromptDraft.value = scenePrompt(s)
+}
+function openSceneUpload(id: number) {
+  uploadTargetSceneId.value = id
+  sceneFileInput.value?.click()
 }
 
 function configLabel(config) {
@@ -2738,24 +2795,7 @@ function batchCharImages() {
   })
 }
 async function genSceneImg(id) {
-  try {
-    if (!isPendingSceneImage(id)) pendingSceneImageIds.value.push(id)
-    await sceneAPI.generateImage(id, epId.value)
-    toast.success('场景图片生成中')
-    await refresh()
-    watchAsyncResult(() => {
-      const scene = scenes.value.find(s => s.id === id)
-      const done = !!(scene?.image_url || scene?.imageUrl)
-      if (done) pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
-      return done
-    }, 24, 2500, () => {
-      pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
-      toast.error('场景图片生成超时，请检查生图服务配置或稍后重试')
-    })
-  } catch (e) {
-    pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
-    toast.error(e.message)
-  }
+  await doGenSceneImg(id)
 }
 function batchSceneImages() {
   const ids = scenes.value.filter(s => !(s.image_url || s.imageUrl)).map(s => s.id)
@@ -2772,6 +2812,47 @@ function batchSceneImages() {
     ids.forEach(id => pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id))
     toast.error('部分场景图片生成超时，请检查生图服务配置或稍后重试')
   })
+}
+
+async function doGenSceneImg(id: number, customPrompt?: string) {
+  try {
+    if (!isPendingSceneImage(id)) pendingSceneImageIds.value.push(id)
+    await sceneAPI.generateImage(id, epId.value, customPrompt)
+    toast.success('场景图片生成中')
+    await refresh()
+    watchAsyncResult(() => {
+      const scene = scenes.value.find(s => s.id === id)
+      const done = !!(scene?.image_url || scene?.imageUrl)
+      if (done) pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
+      return done
+    }, 24, 2500, () => {
+      pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
+      toast.error('场景图片生成超时，请检查生图服务配置或稍后重试')
+    })
+  } catch (e) {
+    pendingSceneImageIds.value = pendingSceneImageIds.value.filter(item => item !== id)
+    toast.error(e.message)
+  }
+}
+async function uploadSceneImage(id: number, file: File) {
+  try {
+    const result = await sceneAPI.uploadImage(id, file)
+    const scene = scenes.value.find(s => s.id === id)
+    if (scene) {
+      scene.image_url = result.image_url || result.url
+      scene.imageUrl = result.image_url || result.url
+    }
+    toast.success('场景图片上传成功')
+  } catch (e) {
+    toast.error(e.message)
+  }
+}
+function handleSceneFileInput(id: number, event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  uploadSceneImage(id, file)
+  input.value = ''
 }
 
 const IGNORE_TTS_SPEAKERS = /^(环境音|环境声|音效|效果音|sfx|sound ?effect|bgm|背景音|背景音乐|ambient)$/i

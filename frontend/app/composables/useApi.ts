@@ -2,7 +2,12 @@ const BASE = '/api/v1'
 
 async function req<T = any>(method: string, path: string, body?: any, init?: RequestInit): Promise<T> {
   const opts: RequestInit = { method, headers: { 'Content-Type': 'application/json' }, ...init }
-  if (body) opts.body = JSON.stringify(body)
+  if (body instanceof FormData) {
+    delete (opts.headers as Record<string, string>)['Content-Type']
+    opts.body = body
+  } else if (body) {
+    opts.body = JSON.stringify(body)
+  }
 
   const start = performance.now()
   console.log(`%c[API] %c${method} %c${path}`, 'color:#888', 'color:#4fc3f7;font-weight:bold', 'color:#ccc', body || '')
@@ -69,12 +74,22 @@ export const storyboardAPI = {
 export const characterAPI = {
   update: (id: number, data: any) => api.put(`/characters/${id}`, data),
   voiceSample: (id: number, episodeId: number) => api.post(`/characters/${id}/generate-voice-sample`, { episode_id: episodeId }),
-  generateImage: (id: number, episodeId: number) => api.post(`/characters/${id}/generate-image`, { episode_id: episodeId }),
+  generateImage: (id: number, episodeId: number, prompt?: string) => api.post(`/characters/${id}/generate-image`, { episode_id: episodeId, ...(prompt ? { prompt } : {}) }),
   batchImages: (ids: number[], episodeId: number) => api.post('/characters/batch-generate-images', { character_ids: ids, episode_id: episodeId }),
+  uploadImage: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/characters/${id}/upload-image`, form)
+  },
 }
 
 export const sceneAPI = {
-  generateImage: (id: number, episodeId: number) => api.post(`/scenes/${id}/generate-image`, { episode_id: episodeId }),
+  generateImage: (id: number, episodeId: number, prompt?: string) => api.post(`/scenes/${id}/generate-image`, { episode_id: episodeId, ...(prompt ? { prompt } : {}) }),
+  uploadImage: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/scenes/${id}/upload-image`, form)
+  },
 }
 
 export const imageAPI = {
