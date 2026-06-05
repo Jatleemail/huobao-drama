@@ -1133,28 +1133,58 @@
               <div class="empty-desc">请先在剧本阶段提取或手动添加道具</div>
             </div>
             <div v-else class="asset-grid">
-              <div v-for="p in props" :key="p.id" class="asset-card">
-                <div class="asset-card-thumb" @click="p.imageUrl || p.image_url ? openImageViewer('/' + (p.image_url || p.imageUrl), `${p.name} 道具图片`) : null">
-                  <img v-if="p.image_url || p.imageUrl" :src="'/' + (p.image_url || p.imageUrl)" :alt="p.name" />
-                  <div v-else class="placeholder-icon"><Package :size="22" /></div>
+              <div v-for="p in props" :key="p.id" class="card asset-card">
+                <div class="asset-cover wide">
+                  <img
+                    v-if="p.image_url || p.imageUrl"
+                    :src="'/' + (p.image_url || p.imageUrl)"
+                    class="previewable-image"
+                    @click.stop="openImageViewer('/' + (p.image_url || p.imageUrl), `${p.name} 道具图片`)"
+                  />
+                  <div v-else class="asset-cover-empty">
+                    <Package :size="20" />
+                  </div>
+                  <span class="asset-cover-badge" :class="(p.image_url || p.imageUrl) ? 'is-ready' : (isPendingPropImage(p.id) ? 'is-pending' : '')">{{ (p.image_url || p.imageUrl) ? '已生成' : (isPendingPropImage(p.id) ? '生成中' : '待生成') }}</span>
                 </div>
-                <div class="asset-card-body">
-                  <div class="asset-card-name">{{ p.name }}</div>
-                  <div class="asset-card-meta">{{ p.type || '其他' }}</div>
+                <div class="asset-body">
+                  <div class="asset-name">{{ p.name }}</div>
+                  <div class="asset-meta dim">{{ p.type || '其他' }}</div>
                 </div>
-                <div class="asset-card-actions">
-                  <button class="btn btn-sm" style="flex:1" title="编辑提示词" @click="openPropPrompt(p)">提示词</button>
-                  <button class="btn btn-sm" style="flex:1" title="生成道具图片" @click="genPropImg(p)">生成</button>
-                  <button class="btn btn-sm" style="flex:1" title="上传道具图片" @click="openPropUpload(p.id)">上传</button>
+                <div class="asset-foot" style="flex-direction:column;align-items:stretch;gap:6px">
+                  <div style="display:flex;align-items:center;gap:4px">
+                    <span :class="['dot', (p.image_url || p.imageUrl) && 'ok', isPendingPropImage(p.id) && 'pending']" />
+                    <span class="dim" style="font-size:10px">{{ (p.image_url || p.imageUrl) ? '已生成' : (isPendingPropImage(p.id) ? '生成中' : '待生成') }}</span>
+                  </div>
+                  <div style="display:flex;gap:4px">
+                    <button class="btn btn-sm" style="flex:1" :disabled="isPendingPropImage(p.id)" @click="genPropImg(p)">{{ isPendingPropImage(p.id) ? '生成中' : '生成' }}</button>
+                    <button class="btn btn-sm" style="flex:1" title="编辑提示词" @click="openPropPrompt(p)">
+                      <Pencil :size="11" />
+                      提示词
+                    </button>
+                    <button class="btn btn-sm" style="flex:1" title="上传道具图片" @click="openPropUpload(p.id)">
+                      <Upload :size="11" />
+                      上传
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
             <!-- 道具提示词编辑对话框 -->
             <div v-if="promptDialogProp" class="overlay" @click.self="promptDialogProp = null">
               <div class="card" style="width:520px;max-width:95vw;padding:20px">
-                <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:4px">编辑提示词 · {{ promptDialogProp.name }}</div>
-                <div class="dim" style="font-size:11px;margin-bottom:12px">修改后点击「使用此提示词生成」将使用自定义提示词调用生图服务</div>
-                <textarea v-model="propPromptDraft" class="textarea" rows="4" style="width:100%;resize:vertical" placeholder="输入自定义提示词..." />
+                <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:4px">
+                  编辑提示词 · {{ promptDialogProp.name }}
+                </div>
+                <div class="dim" style="font-size:11px;margin-bottom:12px">
+                  修改后点击「使用此提示词生成」将使用自定义提示词调用生图服务
+                </div>
+                <textarea
+                  v-model="propPromptDraft"
+                  class="textarea"
+                  rows="4"
+                  style="width:100%;resize:vertical"
+                  placeholder="输入自定义提示词..."
+                />
                 <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
                   <button class="btn" @click="promptDialogProp = null">取消</button>
                   <button class="btn btn-primary" @click="doGenPropImg(promptDialogProp.id, propPromptDraft); promptDialogProp = null">
@@ -1876,6 +1906,7 @@ const videoConfigs = ref([])
 const audioConfigs = ref([])
 const pendingCharImageIds = ref([])
 const pendingSceneImageIds = ref([])
+const pendingPropImageIds = ref([])
 const pendingShotFrameKeys = ref([])
 const pendingVideoIds = ref([])
 const pendingComposeIds = ref([])
@@ -3244,21 +3275,30 @@ function handleSceneFileInput(id: number, event: Event) {
 }
 
 // ---- Props Image Generation ----
+function propPrompt(p: any) {
+  return p.prompt || `A clean product-shot of ${p.name}, ${p.description || ''}, isolated on neutral background, studio lighting, high quality, detailed, no people, no hands, no text, no watermark.`
+}
+function isPendingPropImage(id) {
+  return pendingPropImageIds.value.includes(id)
+}
 function openPropPrompt(prop) {
   promptDialogProp.value = prop
-  propPromptDraft.value = prop.prompt || ''
+  propPromptDraft.value = propPrompt(prop)
 }
 function openPropUpload(id: number) {
   uploadTargetPropId.value = id
   propFileInput.value?.click()
 }
 async function genPropImg(prop) {
+  if (isPendingPropImage(prop.id)) return
+  pendingPropImageIds.value.push(prop.id)
   try {
     toast.info(`正在为道具"${prop.name}"创建生图任务…`)
-    await propAPI.generateImage(prop.id, prop.prompt || undefined)
+    await propAPI.generateImage(prop.id, propPrompt(prop))
     toast.success(`道具"${prop.name}"图片生成任务已提交`)
     setTimeout(() => refresh(), 3000)
   } catch (e: any) { toast.error(e.message) }
+  finally { pendingPropImageIds.value = pendingPropImageIds.value.filter(id => id !== prop.id) }
 }
 async function doGenPropImg(id: number, customPrompt?: string) {
   try {
