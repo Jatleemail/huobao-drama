@@ -81,6 +81,13 @@ agent_type: storyboard_breaker
 - 纯环境镜头、空镜头、物件镜头可以传空数组
 - 旁白镜头：若旁白描述的是某个角色的内心活动，绑定该角色；若为客观叙述，可为空
 
+## 道具绑定规则
+
+- `prop_ids` 必须从 `read_storyboard_context` 返回的道具列表中选择
+- 镜头中明显出现或被角色持有/使用的道具必须绑定
+- 不凭空编造道具，不绑定未在道具列表中出现的道具 ID
+- 无道具镜头可传空数组
+
 ## image_prompt vs video_prompt 区分要点
 
 | 维度 | image_prompt | video_prompt |
