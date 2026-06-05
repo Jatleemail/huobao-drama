@@ -2539,6 +2539,7 @@ const sidebarSections = computed(() => ([
     items: [
       { key: 'prod:chars', label: '角色形象', desc: '', icon: Users, done: prodStepDone('chars') },
       { key: 'prod:scenes', label: '场景图片', desc: '', icon: MapPin, done: prodStepDone('scenes') },
+      { key: 'prod:props', label: '道具图片', desc: '', icon: Package, done: prodStepDone('props') },
       { key: 'prod:dubbing', label: '配音生成', desc: '', icon: Mic2, done: prodStepDone('dubbing') },
       { key: 'prod:shots', label: '镜头图片', desc: '', icon: ImageIcon, done: prodStepDone('shots') },
       { key: 'prod:videos', label: '视频生成', desc: '', icon: Video, done: prodStepDone('videos') },
@@ -2557,7 +2558,7 @@ const sidebarSections = computed(() => ([
 const activeMainStage = computed(() => {
   if (panel.value === 'export') return 'export'
   if (panel.value === 'production') {
-    return ['chars', 'scenes'].includes(prodTab.value) ? 'assets' : 'storyboard'
+    return ['chars', 'scenes', 'props'].includes(prodTab.value) ? 'assets' : 'storyboard'
   }
   if (scriptStep.value <= 1) return 'script'
   if (scriptStep.value <= 3) return 'assets'
@@ -2570,7 +2571,8 @@ function mainStageDone(stageId) {
     const charsReady = !!chars.value.length && charsVoiced.value === chars.value.length
     const charImagesReady = !visualCharTotal.value || charImgCount.value === visualCharTotal.value
     const sceneImagesReady = !scenes.value.length || sceneImgCount.value === scenes.value.length
-    return charsReady && charImagesReady && sceneImagesReady
+    const propImagesReady = !props.value.length || propImgCount.value === props.value.length
+    return charsReady && charImagesReady && sceneImagesReady && propImagesReady
   }
   if (stageId === 'storyboard') {
     if (!sbs.value.length) return false
@@ -2591,12 +2593,13 @@ function goMainStage(stageId) {
     return
   }
   if (stageId === 'assets') {
-    const hasAssetWorkspace = !!visualCharTotal.value || !!scenes.value.length
+    const hasAssetWorkspace = !!visualCharTotal.value || !!scenes.value.length || !!props.value.length
     const hasPendingAssetGeneration = (visualCharTotal.value && charImgCount.value < visualCharTotal.value)
       || (scenes.value.length && sceneImgCount.value < scenes.value.length)
+      || (props.value.length && propImgCount.value < props.value.length)
     if (panel.value === 'production' || hasPendingAssetGeneration || hasAssetWorkspace) {
       panel.value = 'production'
-      prodTab.value = ['chars', 'scenes'].includes(prodTab.value) ? prodTab.value : 'chars'
+      prodTab.value = ['chars', 'scenes', 'props'].includes(prodTab.value) ? prodTab.value : 'chars'
       return
     }
     panel.value = 'script'
@@ -2628,6 +2631,7 @@ const activeSubSteps = computed(() => {
       { key: 'script:voice', label: '分配音色', done: !!chars.value.length && charsVoiced.value === chars.value.length },
       { key: 'prod:chars', label: '角色形象', done: !visualCharTotal.value || charImgCount.value === visualCharTotal.value },
       { key: 'prod:scenes', label: '场景图片', done: !scenes.value.length || sceneImgCount.value === scenes.value.length },
+      { key: 'prod:props', label: '道具图片', done: !props.value.length || propImgCount.value === props.value.length },
     ]
   }
   if (activeMainStage.value === 'storyboard') {
