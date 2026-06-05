@@ -445,7 +445,7 @@
           <div class="card" style="width:360px;max-width:95vw;padding:20px;text-align:center">
             <div style="font-size:15px;font-weight:600;margin-bottom:8px">确认删除</div>
             <div class="dim" style="margin-bottom:16px">
-              确定要删除{{ deleteConfirm.type === 'char' ? '角色' : '场景' }}「{{ deleteConfirm.type === 'char' ? deleteConfirm.item.name : deleteConfirm.item.location }}」吗？此操作不可撤销。
+              确定要删除{{ deleteConfirm.type === 'char' ? '角色' : deleteConfirm.type === 'prop' ? '道具' : '场景' }}「{{ deleteConfirm.item.name || deleteConfirm.item.location }}」吗？此操作不可撤销。
             </div>
             <div style="display:flex;justify-content:center;gap:8px">
               <button class="btn" @click="deleteConfirm = null">取消</button>
