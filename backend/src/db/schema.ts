@@ -137,6 +137,13 @@ export const storyboardCharacters = sqliteTable('storyboard_characters', {
   pk: primaryKey({ columns: [table.storyboardId, table.characterId] }),
 }))
 
+export const storyboardProps = sqliteTable('storyboard_props', {
+  storyboardId: integer('storyboard_id').notNull(),
+  propId: integer('prop_id').notNull(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.storyboardId, table.propId] }),
+}))
+
 export const aiServiceConfigs = sqliteTable('ai_service_configs', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   serviceType: text('service_type').notNull(),
