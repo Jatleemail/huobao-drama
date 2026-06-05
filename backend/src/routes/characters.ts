@@ -1,7 +1,7 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
-import { success, badRequest, now } from '../utils/response.js'
+import { success, created, badRequest, now } from '../utils/response.js'
 import { generateVoiceSample } from '../services/tts-generation.js'
 import { generateImage } from '../services/image-generation.js'
 import { saveUploadedFile } from '../utils/storage.js'
@@ -9,6 +9,44 @@ import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger
 import { stylePortrait, aspectRatioToSize, getDramaVisualSettings } from '../utils/style-mapping.js'
 
 const app = new Hono()
+
+// POST /characters — Create a new character
+app.post('/', async (c) => {
+  const body = await c.req.json()
+  if (!body.drama_id) return badRequest(c, 'drama_id is required')
+  if (!body.name) return badRequest(c, 'name is required')
+  const ts = now()
+  const res = db.insert(schema.characters).values({
+    dramaId: body.drama_id,
+    name: body.name,
+    role: body.role || '',
+    description: body.description || '',
+    createdAt: ts,
+    updatedAt: ts,
+  }).run()
+  const charId = Number(res.lastInsertRowid)
+
+  // Link to episode if episode_id provided
+  if (body.episode_id) {
+    const epId = Number(body.episode_id)
+    const existing = db.select().from(schema.episodeCharacters)
+      .where(and(
+        eq(schema.episodeCharacters.episodeId, epId),
+        eq(schema.episodeCharacters.characterId, charId)
+      )).all()
+    if (!existing.length) {
+      db.insert(schema.episodeCharacters).values({
+        episodeId: epId,
+        characterId: charId,
+        createdAt: ts,
+      }).run()
+    }
+  }
+
+  const [result] = db.select().from(schema.characters)
+    .where(eq(schema.characters.id, charId)).all()
+  return created(c, result)
+})
 
 // PUT /characters/:id
 app.put('/:id', async (c) => {
@@ -138,6 +176,14 @@ app.post('/batch-generate-images', async (c) => {
   }
   logTaskSuccess('CharacterImage', 'batch-generate', { episodeId: ep.id, requested: ids.length, started: results.length })
   return success(c, { count: results.length, ids: results })
+})
+
+// GET /characters/:id/storyboard-bindings — 检查角色是否被分镜引用
+app.get('/:id/storyboard-bindings', async (c) => {
+  const id = Number(c.req.param('id'))
+  const bindings = db.select().from(schema.storyboardCharacters)
+    .where(eq(schema.storyboardCharacters.characterId, id)).all()
+  return success(c, { bound: bindings.length > 0, storyboard_count: bindings.length })
 })
 
 export default app

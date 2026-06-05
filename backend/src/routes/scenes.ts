@@ -1,5 +1,5 @@
 import { Hono } from 'hono'
-import { eq } from 'drizzle-orm'
+import { eq, and } from 'drizzle-orm'
 import { db, schema } from '../db/index.js'
 import { success, created, badRequest, now } from '../utils/response.js'
 import { generateImage } from '../services/image-generation.js'
@@ -22,8 +22,27 @@ app.post('/', async (c) => {
     createdAt: ts,
     updatedAt: ts,
   }).run()
+  const sceneId = Number(res.lastInsertRowid)
+
+  // Link to episode if episode_id provided
+  if (body.episode_id) {
+    const epId = Number(body.episode_id)
+    const existing = db.select().from(schema.episodeScenes)
+      .where(and(
+        eq(schema.episodeScenes.episodeId, epId),
+        eq(schema.episodeScenes.sceneId, sceneId)
+      )).all()
+    if (!existing.length) {
+      db.insert(schema.episodeScenes).values({
+        episodeId: epId,
+        sceneId: sceneId,
+        createdAt: ts,
+      }).run()
+    }
+  }
+
   const [result] = db.select().from(schema.scenes)
-    .where(eq(schema.scenes.id, Number(res.lastInsertRowid))).all()
+    .where(eq(schema.scenes.id, sceneId)).all()
   return created(c, result)
 })
 
@@ -91,8 +110,22 @@ app.post('/:id/upload-image', async (c) => {
 // DELETE /scenes/:id
 app.delete('/:id', async (c) => {
   const id = Number(c.req.param('id'))
+  // Check storyboard bindings before delete
+  const bindings = db.select().from(schema.storyboards)
+    .where(eq(schema.storyboards.sceneId, id)).all()
+  if (bindings.length > 0) {
+    return badRequest(c, `场景已被 ${bindings.length} 个分镜引用，无法删除`)
+  }
   db.delete(schema.scenes).where(eq(schema.scenes.id, id)).run()
   return success(c)
+})
+
+// GET /scenes/:id/storyboard-bindings — 检查场景是否被分镜引用
+app.get('/:id/storyboard-bindings', async (c) => {
+  const id = Number(c.req.param('id'))
+  const bindings = db.select().from(schema.storyboards)
+    .where(eq(schema.storyboards.sceneId, id)).all()
+  return success(c, { bound: bindings.length > 0, storyboard_count: bindings.length })
 })
 
 export default app

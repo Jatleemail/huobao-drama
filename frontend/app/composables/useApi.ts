@@ -72,7 +72,11 @@ export const storyboardAPI = {
 }
 
 export const characterAPI = {
+  create: (data: { drama_id: number; episode_id: number; name: string; role?: string; description?: string }) =>
+    api.post('/characters', data),
   update: (id: number, data: any) => api.put(`/characters/${id}`, data),
+  del: (id: number) => api.del(`/characters/${id}`),
+  storyboardBindings: (id: number) => api.get<{ bound: boolean; storyboard_count: number }>(`/characters/${id}/storyboard-bindings`),
   voiceSample: (id: number, episodeId: number) => api.post(`/characters/${id}/generate-voice-sample`, { episode_id: episodeId }),
   generateImage: (id: number, episodeId: number, prompt?: string) => api.post(`/characters/${id}/generate-image`, { episode_id: episodeId, ...(prompt ? { prompt } : {}) }),
   batchImages: (ids: number[], episodeId: number) => api.post('/characters/batch-generate-images', { character_ids: ids, episode_id: episodeId }),
@@ -84,6 +88,12 @@ export const characterAPI = {
 }
 
 export const sceneAPI = {
+  create: (data: { drama_id: number; episode_id?: number; location: string; time?: string; prompt?: string }) =>
+    api.post('/scenes', data),
+  update: (id: number, data: { location?: string; time?: string; prompt?: string }) =>
+    api.put(`/scenes/${id}`, data),
+  del: (id: number) => api.del(`/scenes/${id}`),
+  storyboardBindings: (id: number) => api.get<{ bound: boolean; storyboard_count: number }>(`/scenes/${id}/storyboard-bindings`),
   generateImage: (id: number, episodeId: number, prompt?: string) => api.post(`/scenes/${id}/generate-image`, { episode_id: episodeId, ...(prompt ? { prompt } : {}) }),
   uploadImage: (id: number, file: File) => {
     const form = new FormData()

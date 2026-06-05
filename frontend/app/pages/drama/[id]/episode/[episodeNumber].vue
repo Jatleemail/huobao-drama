@@ -269,6 +269,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <span>角色</span>
                 <span class="tag tag-accent">{{ chars.length }}</span>
+                <button class="btn btn-sm" style="margin-left:auto" @click="openCharDialog()"><Plus :size="12" /> 角色</button>
               </div>
               <div class="extract-list">
                 <div v-for="c in chars" :key="c.id" class="extract-row">
@@ -280,6 +281,10 @@
                     </div>
                     <div class="extract-meta wrap">{{ c.description || c.appearance || c.personality || '暂无描述' }}</div>
                   </div>
+                  <div class="extract-row-actions">
+                    <button class="btn-icon" title="编辑角色" @click="openCharDialog(c)"><Pencil :size="12" /></button>
+                    <button class="btn-icon" title="删除角色" @click="confirmDeleteChar(c)"><Trash2 :size="12" /></button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -289,6 +294,7 @@
                 <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
                 <span>场景</span>
                 <span class="tag tag-accent">{{ scenes.length }}</span>
+                <button class="btn btn-sm" style="margin-left:auto" @click="openSceneDialog()"><Plus :size="12" /> 场景</button>
               </div>
               <div class="extract-list">
                 <div v-for="s in scenes" :key="s.id" class="extract-row">
@@ -302,8 +308,81 @@
                     </div>
                     <div class="extract-meta wrap">{{ s.description || s.time || '等待补充场景描述' }}</div>
                   </div>
+                  <div class="extract-row-actions">
+                    <button class="btn-icon" title="编辑场景" @click="openSceneDialog(s)"><Pencil :size="12" /></button>
+                    <button class="btn-icon" title="删除场景" @click="confirmDeleteScene(s)"><Trash2 :size="12" /></button>
+                  </div>
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Character Edit Dialog -->
+        <div v-if="charDialog" class="overlay" @click.self="charDialog = false">
+          <div class="card" style="width:420px;max-width:95vw;padding:20px">
+            <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:12px">
+              {{ editingChar ? '编辑角色' : '新增角色' }}
+            </div>
+            <label class="field">
+              <span class="field-label">角色名称</span>
+              <input class="input" v-model="charForm.name" placeholder="输入角色名称" />
+            </label>
+            <label class="field">
+              <span class="field-label">角色描述</span>
+              <textarea class="textarea" v-model="charForm.description" rows="3" placeholder="角色外貌、性格、背景等" />
+            </label>
+            <label class="field">
+              <span class="field-label">主配角</span>
+              <select class="input" v-model="charForm.role">
+                <option value="">请选择</option>
+                <option value="主角">主角</option>
+                <option value="配角">配角</option>
+                <option value="其他">其他</option>
+              </select>
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+              <button class="btn" @click="charDialog = false">取消</button>
+              <button class="btn btn-primary" @click="saveChar">确认</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Scene Edit Dialog -->
+        <div v-if="sceneDialog" class="overlay" @click.self="sceneDialog = false">
+          <div class="card" style="width:420px;max-width:95vw;padding:20px">
+            <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:12px">
+              {{ editingScene ? '编辑场景' : '新增场景' }}
+            </div>
+            <label class="field">
+              <span class="field-label">场景名称</span>
+              <input class="input" v-model="sceneForm.location" placeholder="输入场景名称" />
+            </label>
+            <label class="field">
+              <span class="field-label">场景描述</span>
+              <textarea class="textarea" v-model="sceneForm.prompt" rows="3" placeholder="场景环境、氛围、特点等" />
+            </label>
+            <label class="field">
+              <span class="field-label">时间</span>
+              <input class="input" v-model="sceneForm.time" placeholder="如：白天、夜晚、黄昏等" />
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+              <button class="btn" @click="sceneDialog = false">取消</button>
+              <button class="btn btn-primary" @click="saveScene">确认</button>
+            </div>
+          </div>
+        </div>
+
+        <!-- Delete Confirm Dialog -->
+        <div v-if="deleteConfirm" class="overlay" @click.self="deleteConfirm = null">
+          <div class="card" style="width:360px;max-width:95vw;padding:20px;text-align:center">
+            <div style="font-size:15px;font-weight:600;margin-bottom:8px">确认删除</div>
+            <div class="dim" style="margin-bottom:16px">
+              确定要删除{{ deleteConfirm.type === 'char' ? '角色' : '场景' }}「{{ deleteConfirm.type === 'char' ? deleteConfirm.item.name : deleteConfirm.item.location }}」吗？此操作不可撤销。
+            </div>
+            <div style="display:flex;justify-content:center;gap:8px">
+              <button class="btn" @click="deleteConfirm = null">取消</button>
+              <button class="btn btn-danger" @click="doDelete">确认删除</button>
             </div>
           </div>
         </div>
@@ -1576,7 +1655,7 @@
 import { toast } from 'vue-sonner'
 import {
   Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download,
-  Loader2, Check, Pencil, Upload,
+  Loader2, Check, Pencil, Upload, Plus, Trash2,
 } from 'lucide-vue-next'
 import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
 import { useAgentStream } from '~/composables/useAgentStream'
@@ -1597,6 +1676,14 @@ const dramaId = Number(route.params.id)
 const episodeNumber = Number(route.params.episodeNumber)
 
 const drama = ref(null), episode = ref(null), chars = ref([]), scenes = ref([]), sbs = ref([]), mergeData = ref(null)
+// Character & Scene CRUD dialogs
+const charDialog = ref(false)
+const sceneDialog = ref(false)
+const editingChar = ref(null)
+const editingScene = ref(null)
+const charForm = reactive({ name: '', role: '', description: '' })
+const sceneForm = reactive({ location: '', time: '', prompt: '' })
+const deleteConfirm = ref(null) // { type: 'char'|'scene', item: object }
 const panel = ref('script')
 const { progress: agentProgress, runStream: runAgentStream } = useAgentStream()
 const streamType = ref<string | null>(null)
@@ -2626,6 +2713,104 @@ async function refresh() {
     toast.error(e.message)
   }
   try { mergeData.value = await mergeAPI.status(epId.value) } catch {}
+}
+
+// ---- Character CRUD ----
+function openCharDialog(char = null) {
+  editingChar.value = char
+  if (char) {
+    charForm.name = char.name || ''
+    charForm.role = char.role || ''
+    charForm.description = char.description || ''
+  } else {
+    charForm.name = ''
+    charForm.role = ''
+    charForm.description = ''
+  }
+  charDialog.value = true
+}
+
+async function saveChar() {
+  if (!charForm.name.trim()) { toast.error('请输入角色名称'); return }
+  try {
+    if (editingChar.value) {
+      await characterAPI.update(editingChar.value.id, { name: charForm.name, role: charForm.role, description: charForm.description })
+      toast.success('角色已更新')
+    } else {
+      await characterAPI.create({ drama_id: dramaId, episode_id: epId.value, name: charForm.name, role: charForm.role, description: charForm.description })
+      toast.success('角色已创建')
+    }
+    charDialog.value = false
+    await refresh()
+  } catch (e: any) { toast.error(e.message) }
+}
+
+async function confirmDeleteChar(char) {
+  try {
+    const { bound, storyboard_count } = await characterAPI.storyboardBindings(char.id)
+    if (bound) {
+      toast.error(`无法删除角色"${char.name}"，已被 ${storyboard_count} 个分镜引用`)
+    } else {
+      deleteConfirm.value = { type: 'char', item: char }
+    }
+  } catch (e: any) { toast.error(e.message) }
+}
+
+// ---- Scene CRUD ----
+function openSceneDialog(scene = null) {
+  editingScene.value = scene
+  if (scene) {
+    sceneForm.location = scene.location || ''
+    sceneForm.time = scene.time || ''
+    sceneForm.prompt = scene.prompt || ''
+  } else {
+    sceneForm.location = ''
+    sceneForm.time = ''
+    sceneForm.prompt = ''
+  }
+  sceneDialog.value = true
+}
+
+async function saveScene() {
+  if (!sceneForm.location.trim()) { toast.error('请输入场景名称'); return }
+  try {
+    if (editingScene.value) {
+      await sceneAPI.update(editingScene.value.id, { location: sceneForm.location, time: sceneForm.time, prompt: sceneForm.prompt })
+      toast.success('场景已更新')
+    } else {
+      await sceneAPI.create({ drama_id: dramaId, episode_id: epId.value, location: sceneForm.location, time: sceneForm.time, prompt: sceneForm.prompt })
+      toast.success('场景已创建')
+    }
+    sceneDialog.value = false
+    await refresh()
+  } catch (e: any) { toast.error(e.message) }
+}
+
+async function confirmDeleteScene(scene) {
+  try {
+    const { bound, storyboard_count } = await sceneAPI.storyboardBindings(scene.id)
+    if (bound) {
+      toast.error(`无法删除场景"${scene.location}"，已被 ${storyboard_count} 个分镜引用`)
+    } else {
+      deleteConfirm.value = { type: 'scene', item: scene }
+    }
+  } catch (e: any) { toast.error(e.message) }
+}
+
+async function doDelete() {
+  if (!deleteConfirm.value) return
+  const { type, item } = deleteConfirm.value
+  try {
+    if (type === 'char') {
+      await characterAPI.del(item.id)
+      toast.success(`角色"${item.name}"已删除`)
+    } else {
+      await sceneAPI.del(item.id)
+      toast.success(`场景"${item.location}"已删除`)
+    }
+    deleteConfirm.value = null
+    await refresh()
+  } catch (e: any) { toast.error(e.message) }
 }
 
 function saveRaw() { episodeAPI.update(epId.value, { content: localRaw.value }); episode.value.content = localRaw.value }
@@ -3669,6 +3854,42 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .extract-name { font-size: 13px; font-weight: 600; }
 .extract-meta { font-size: 11px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .extract-meta.wrap { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* Extract row actions */
+.extract-row { position: relative; }
+.extract-row-actions {
+  display: none;
+  gap: 2px;
+  align-items: center;
+  margin-left: auto;
+  flex-shrink: 0;
+}
+.extract-row:hover .extract-row-actions {
+  display: flex;
+}
+.btn-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: var(--text-dim);
+  border-radius: 6px;
+  cursor: pointer;
+}
+.btn-icon:hover {
+  background: var(--bg-hover);
+  color: var(--text);
+}
+.btn-danger {
+  background: #dc2626;
+  color: #fff;
+}
+.btn-danger:hover {
+  background: #b91c1c;
+}
 
 /* Voice grid */
 .voice-stage { flex: 1; min-height: 0; overflow-y: auto; padding: 14px 16px; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; }
