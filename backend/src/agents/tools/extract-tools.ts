@@ -238,11 +238,94 @@ export function createExtractTools(episodeId: number, dramaId: number) {
     },
   })
 
+  // 6. 读取项目中已存在的道具（用于去重判断）
+  const readExistingProps = createTool({
+    id: 'read_existing_props',
+    description: 'Read all props already existing in this drama project (for deduplication).',
+    inputSchema: z.object({}),
+    execute: async () => {
+      const existingProps = db.select().from(schema.props)
+        .where(eq(schema.props.dramaId, dramaId)).all()
+        .filter(p => !p.deletedAt)
+      const payload = {
+        count: existingProps.length,
+        props: existingProps,
+      }
+      logTaskSuccess('ExtractTool', 'read-props', {
+        episodeId,
+        dramaId,
+        projectProps: payload.count,
+      })
+      return payload
+    },
+  })
+
+  // 7. 智能保存道具（按名字去重，与现有数据合并）
+  const saveDedupProps = createTool({
+    id: 'save_dedup_props',
+    description: 'Save extracted props with deduplication. Existing props (same name) are merged/updated; new ones are created.',
+    inputSchema: z.object({
+      props: z.array(z.object({
+        name: z.string(),
+        category: z.string().optional(),
+        description: z.string().optional(),
+        prompt: z.string().optional(),
+      })),
+    }),
+    execute: async ({ props }) => {
+      const ts = now()
+      const results = { created: 0, merged: 0 }
+      logTaskProgress('ExtractTool', 'save-props-begin', {
+        episodeId,
+        dramaId,
+        names: props.map(p => p.name).join(','),
+      })
+
+      for (const prop of props) {
+        const existing = db.select().from(schema.props)
+          .where(eq(schema.props.dramaId, dramaId)).all()
+          .filter(p => !p.deletedAt)
+          .find(p => p.name === prop.name)
+
+        if (existing) {
+          // Merge: update if richer
+          const updates: Record<string, any> = { updatedAt: ts }
+          if (prop.description && (!existing.description || prop.description.length > (existing.description?.length || 0)))
+            updates.description = prop.description
+          if (prop.prompt) updates.prompt = prop.prompt
+          if (prop.category) updates.type = prop.category
+          db.update(schema.props).set(updates).where(eq(schema.props.id, existing.id)).run()
+          results.merged++
+        } else {
+          db.insert(schema.props).values({
+            dramaId,
+            name: prop.name,
+            type: prop.category || null,
+            description: prop.description || null,
+            prompt: prop.prompt || null,
+            createdAt: ts,
+            updatedAt: ts,
+          }).run()
+          results.created++
+        }
+      }
+
+      const payload = {
+        message: `道具保存完成：新增 ${results.created}，合并更新 ${results.merged}`,
+        ...results,
+      }
+      logTaskSuccess('ExtractTool', 'save-props-complete', { episodeId, ...results })
+      return payload
+    },
+  })
+
   return {
     readScriptForExtraction,
     readExistingCharacters,
     readExistingScenes,
     saveDedupCharacters,
     saveDedupScenes,
+    readExistingProps,
+    saveDedupProps,
   }
 }
