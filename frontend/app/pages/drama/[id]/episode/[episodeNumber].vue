@@ -210,7 +210,7 @@
               </div>
             </div>
             <div class="toolbar-right">
-              <span v-if="chars.length" class="char-count">{{ chars.length }} 角色 · {{ scenes.length }} 场景</span>
+              <span v-if="chars.length" class="char-count">{{ chars.length }} 角色 · {{ scenes.length }} 场景 · {{ props.length }} 道具</span>
               <button v-if="chars.length" class="btn btn-sm" @click="doExtract" :disabled="agentProgress.status === 'running'">
                 <Loader2 v-if="agentProgress.status === 'running' && streamType === 'extractor'" :size="11" class="animate-spin" />
                 <svg v-else width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
@@ -259,6 +259,10 @@
                 <div class="extract-summary-stat">
                   <span>场景</span>
                   <strong>{{ scenes.length }}</strong>
+                </div>
+                <div class="extract-summary-stat">
+                  <span>道具</span>
+                  <strong>{{ props.length }}</strong>
                 </div>
               </div>
               <div class="extract-summary-note">如果角色描述过于简短，后续分配音色和生成形象时建议先补充人物特征。</div>
@@ -314,6 +318,69 @@
                   </div>
                 </div>
               </div>
+            </div>
+
+            <div class="card extract-card">
+              <div class="extract-card-head">
+                <Package :size="14" />
+                <span>道具</span>
+                <span class="tag tag-accent">{{ props.length }}</span>
+                <button class="btn btn-sm" style="margin-left:auto" @click="openPropDialog()"><Plus :size="12" /> 道具</button>
+              </div>
+              <div v-if="!props.length" class="dim" style="padding:8px 0;font-size:12px">暂无道具，可手动添加</div>
+              <div v-else class="extract-list">
+                <div v-for="p in props" :key="p.id" class="extract-row">
+                  <div class="prop-icon">
+                    <Package :size="12" />
+                  </div>
+                  <div class="extract-info">
+                    <div class="extract-name-row">
+                      <div class="extract-name">{{ p.name }}</div>
+                      <span v-if="p.type" class="tag">{{ p.type }}</span>
+                    </div>
+                    <div class="extract-meta wrap">{{ p.description || '暂无描述' }}</div>
+                  </div>
+                  <div class="extract-row-actions">
+                    <button class="btn-icon" title="编辑道具" @click="openPropDialog(p)"><Pencil :size="12" /></button>
+                    <button class="btn-icon" title="删除道具" @click="confirmDeleteProp(p)"><Trash2 :size="12" /></button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Prop Edit Dialog -->
+        <div v-if="propDialog" class="overlay" @click.self="propDialog = false">
+          <div class="card" style="width:420px;max-width:95vw;padding:20px">
+            <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:12px">
+              {{ editingProp ? '编辑道具' : '新增道具' }}
+            </div>
+            <label class="field">
+              <span class="field-label">道具名称</span>
+              <input class="input" v-model="propForm.name" placeholder="输入道具名称" />
+            </label>
+            <label class="field">
+              <span class="field-label">道具类型</span>
+              <select class="input" v-model="propForm.type">
+                <option value="">-- 选择类型 --</option>
+                <option value="武器">武器</option>
+                <option value="文件书信">文件书信</option>
+                <option value="食物饮品">食物饮品</option>
+                <option value="交通工具">交通工具</option>
+                <option value="装饰品">装饰品</option>
+                <option value="科技设备">科技设备</option>
+                <option value="自然物品">自然物品</option>
+                <option value="其他">其他</option>
+              </select>
+            </label>
+            <label class="field">
+              <span class="field-label">道具描述</span>
+              <textarea class="textarea" v-model="propForm.description" rows="3" placeholder="材质、颜色、形状、大小、标志性细节" />
+            </label>
+            <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:16px">
+              <button class="btn" @click="propDialog = false">取消</button>
+              <button class="btn btn-primary" @click="saveProp">确认</button>
             </div>
           </div>
         </div>
@@ -712,6 +779,21 @@
                       </div>
                     </label>
                     <label class="field">
+                      <span class="field-label">绑定道具</span>
+                      <div class="role-pills">
+                        <button
+                          v-for="p in props"
+                          :key="p.id"
+                          type="button"
+                          :class="['role-pill', { active: isStoryboardPropSelected(selectedSb, p.id) }]"
+                          @click="toggleStoryboardProp(selectedSb, p.id)"
+                        >
+                          {{ p.name }}
+                        </button>
+                        <span v-if="!props.length" class="dim" style="font-size:12px">当前集还没有道具</span>
+                      </div>
+                    </label>
+                    <label class="field">
                       <span class="field-label">绑定场景</span>
                       <select class="input" :value="selectedSb.scene_id || selectedSb.sceneId || ''"
                         @change="updateField(selectedSb, 'scene_id', $event.target.value ? Number($event.target.value) : null)">
@@ -1030,6 +1112,59 @@
             </div>
             <input type="file" ref="sceneFileInput" accept="image/*" style="display:none"
               @change="handleSceneFileInput(uploadTargetSceneId, $event)" />
+          </div>
+
+          <!-- Sub: Props -->
+          <div v-else-if="prodTab === 'props'" class="prod-content">
+            <div class="prod-section-bar">
+              <span class="dim" style="font-size:12px">{{ props.length }} 个道具</span>
+              <span class="tag">{{ lockedImageConfigLabel }}</span>
+              <div class="ml-auto flex gap-1">
+                <button class="btn btn-sm" @click="batchPropImages">
+                  <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>
+                  批量生成
+                </button>
+              </div>
+            </div>
+
+            <div v-if="!props.length" class="step-empty" style="min-height:260px">
+              <div class="empty-visual"><Package :size="20" /></div>
+              <div class="empty-title">暂无道具</div>
+              <div class="empty-desc">请先在剧本阶段提取或手动添加道具</div>
+            </div>
+            <div v-else class="asset-grid">
+              <div v-for="p in props" :key="p.id" class="asset-card">
+                <div class="asset-card-thumb" @click="p.imageUrl || p.image_url ? openImageViewer('/' + (p.image_url || p.imageUrl), `${p.name} 道具图片`) : null">
+                  <img v-if="p.image_url || p.imageUrl" :src="'/' + (p.image_url || p.imageUrl)" :alt="p.name" />
+                  <div v-else class="placeholder-icon"><Package :size="22" /></div>
+                </div>
+                <div class="asset-card-body">
+                  <div class="asset-card-name">{{ p.name }}</div>
+                  <div class="asset-card-meta">{{ p.type || '其他' }}</div>
+                </div>
+                <div class="asset-card-actions">
+                  <button class="btn btn-sm" style="flex:1" title="编辑提示词" @click="openPropPrompt(p)">提示词</button>
+                  <button class="btn btn-sm" style="flex:1" title="生成道具图片" @click="genPropImg(p)">生成</button>
+                  <button class="btn btn-sm" style="flex:1" title="上传道具图片" @click="openPropUpload(p.id)">上传</button>
+                </div>
+              </div>
+            </div>
+            <!-- 道具提示词编辑对话框 -->
+            <div v-if="promptDialogProp" class="overlay" @click.self="promptDialogProp = null">
+              <div class="card" style="width:520px;max-width:95vw;padding:20px">
+                <div style="font-size:15px;font-weight:600;font-family:var(--font-display);margin-bottom:4px">编辑提示词 · {{ promptDialogProp.name }}</div>
+                <div class="dim" style="font-size:11px;margin-bottom:12px">修改后点击「使用此提示词生成」将使用自定义提示词调用生图服务</div>
+                <textarea v-model="propPromptDraft" class="textarea" rows="4" style="width:100%;resize:vertical" placeholder="输入自定义提示词..." />
+                <div style="display:flex;justify-content:flex-end;gap:8px;margin-top:12px">
+                  <button class="btn" @click="promptDialogProp = null">取消</button>
+                  <button class="btn btn-primary" @click="doGenPropImg(promptDialogProp.id, propPromptDraft); promptDialogProp = null">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    使用此提示词生成
+                  </button>
+                </div>
+              </div>
+            </div>
+            <input type="file" ref="propFileInput" accept="image/*" style="display:none" @change="handlePropFileInput(uploadTargetPropId, $event)" />
           </div>
 
           <!-- Sub: Dubbing -->
@@ -1655,9 +1790,9 @@
 import { toast } from 'vue-sonner'
 import {
   Users, MapPin, Video, ImageIcon, Layers, Mic2, FileText, FolderKanban, Clapperboard, Download,
-  Loader2, Check, Pencil, Upload, Plus, Trash2,
+  Loader2, Check, Pencil, Upload, Plus, Trash2, Package,
 } from 'lucide-vue-next'
-import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
+import { dramaAPI, episodeAPI, storyboardAPI, characterAPI, sceneAPI, propAPI, imageAPI, videoAPI, composeAPI, mergeAPI, gridAPI, aiConfigAPI, voicesAPI } from '~/composables/useApi'
 import { useAgentStream } from '~/composables/useAgentStream'
 import BaseSelect from '~/components/BaseSelect.vue'
 import mammoth from 'mammoth'
@@ -1675,7 +1810,7 @@ const route = useRoute()
 const dramaId = Number(route.params.id)
 const episodeNumber = Number(route.params.episodeNumber)
 
-const drama = ref(null), episode = ref(null), chars = ref([]), scenes = ref([]), sbs = ref([]), mergeData = ref(null)
+const drama = ref(null), episode = ref(null), chars = ref([]), scenes = ref([]), props = ref([]), sbs = ref([]), mergeData = ref(null)
 // Character & Scene CRUD dialogs
 const charDialog = ref(false)
 const sceneDialog = ref(false)
@@ -1683,7 +1818,12 @@ const editingChar = ref(null)
 const editingScene = ref(null)
 const charForm = reactive({ name: '', role: '', description: '' })
 const sceneForm = reactive({ location: '', time: '', prompt: '' })
-const deleteConfirm = ref(null) // { type: 'char'|'scene', item: object }
+const deleteConfirm = ref(null) // { type: 'char'|'scene'|'prop', item: object }
+// Props CRUD
+const propDialog = ref(false)
+const editingProp = ref(null)
+const propForm = reactive({ name: '', type: '', description: '', prompt: '' })
+const propDeleteBindings = ref(0)
 const panel = ref('script')
 const { progress: agentProgress, runStream: runAgentStream } = useAgentStream()
 const streamType = ref<string | null>(null)
@@ -1753,6 +1893,11 @@ const charFileInput = ref<HTMLInputElement | null>(null)
 const promptDialogScene = ref<any>(null)
 const scenePromptDraft = ref('')
 const uploadTargetSceneId = ref(0)
+// Props image state
+const promptDialogProp = ref(null)
+const propPromptDraft = ref('')
+const uploadTargetPropId = ref(0)
+const propFileInput = ref<HTMLInputElement | null>(null)
 const sceneFileInput = ref<HTMLInputElement | null>(null)
 
 function charPrompt(c: any) {
@@ -2352,6 +2497,7 @@ async function doGridSplit() {
 
 const charImgCount = computed(() => visualChars.value.filter(c => c.image_url || c.imageUrl).length)
 const sceneImgCount = computed(() => scenes.value.filter(s => s.image_url || s.imageUrl).length)
+const propImgCount = computed(() => props.value.filter(p => p.image_url || p.imageUrl).length)
 const ttsEligibleCount = computed(() => sbs.value.filter(s => hasDialogue(s)).length)
 const ttsGeneratedCount = computed(() => sbs.value.filter(s => hasDialogue(s) && hasTTS(s)).length)
 const shotImgCount = computed(() => sbs.value.filter(s => s.first_frame_image || s.firstFrameImage || s.last_frame_image || s.lastFrameImage || s.composed_image || s.composedImage).length)
@@ -2361,6 +2507,7 @@ const visualCharTotal = computed(() => visualChars.value.length)
 const prodTabDefs = computed(() => [
   { id: 'chars', label: '角色形象', icon: Users, badge: visualCharTotal.value ? `${charImgCount.value}/${visualCharTotal.value}` : '' },
   { id: 'scenes', label: '场景图片', icon: MapPin, badge: sceneImgCount.value ? `${sceneImgCount.value}/${scenes.value.length}` : '' },
+  { id: 'props', label: '道具图片', icon: Package, badge: propImgCount.value ? `${propImgCount.value}/${props.value.length}` : '' },
   { id: 'dubbing', label: '配音生成', icon: Mic2, badge: '' },
   { id: 'shots', label: '镜头图片', icon: ImageIcon, badge: shotImgCount.value ? `${shotImgCount.value}/${sbs.value.length}` : '' },
   { id: 'videos', label: '视频生成', icon: Video, badge: shotVidCount.value ? `${shotVidCount.value}/${sbs.value.length}` : '' },
@@ -2654,6 +2801,20 @@ function toggleStoryboardCharacter(sb, charId) {
   updateField(sb, 'character_ids', nextIds)
 }
 
+function getStoryboardPropIds(sb) {
+  return sb?.prop_ids || sb?.propIds || []
+}
+function isStoryboardPropSelected(sb, propId) {
+  return getStoryboardPropIds(sb).includes(propId)
+}
+function toggleStoryboardProp(sb, propId) {
+  const currentIds = getStoryboardPropIds(sb)
+  const nextIds = currentIds.includes(propId)
+    ? currentIds.filter(id => id !== propId)
+    : [...currentIds, propId]
+  updateField(sb, 'prop_ids', nextIds)
+}
+
 function getSceneName(sb) {
   const sceneId = sb?.scene_id || sb?.sceneId
   if (!sceneId) return '未绑定场景'
@@ -2695,6 +2856,7 @@ async function refresh() {
       episode.value = ep
       try { chars.value = await episodeAPI.characters(ep.id) } catch { chars.value = [] }
       try { scenes.value = await episodeAPI.scenes(ep.id) } catch { scenes.value = [] }
+      try { props.value = await propAPI.list(dramaId) } catch { props.value = [] }
       sbs.value = await episodeAPI.storyboards(ep.id)
       if (sbs.value.length && !selectedSb.value) selectedSb.value = sbs.value[0]
 
@@ -2804,12 +2966,49 @@ async function doDelete() {
     if (type === 'char') {
       await characterAPI.del(item.id)
       toast.success(`角色"${item.name}"已删除`)
+    } else if (type === 'prop') {
+      await propAPI.del(item.id)
+      toast.success(`道具"${item.name}"已删除`)
     } else {
       await sceneAPI.del(item.id)
       toast.success(`场景"${item.location}"已删除`)
     }
     deleteConfirm.value = null
     await refresh()
+  } catch (e: any) { toast.error(e.message) }
+}
+
+// ---- Props CRUD ----
+function openPropDialog(prop = null) {
+  editingProp.value = prop
+  propForm.name = prop?.name || ''
+  propForm.type = prop?.type || ''
+  propForm.description = prop?.description || ''
+  propForm.prompt = prop?.prompt || ''
+  propDialog.value = true
+}
+async function saveProp() {
+  if (!propForm.name.trim()) { toast.error('请输入道具名称'); return }
+  try {
+    if (editingProp.value) {
+      await propAPI.update(editingProp.value.id, { name: propForm.name, type: propForm.type, description: propForm.description, prompt: propForm.prompt })
+      toast.success('道具已更新')
+    } else {
+      await propAPI.create({ drama_id: dramaId, name: propForm.name, type: propForm.type, description: propForm.description, prompt: propForm.prompt })
+      toast.success('道具已创建')
+    }
+    propDialog.value = false
+    await refresh()
+  } catch (e: any) { toast.error(e.message) }
+}
+async function confirmDeleteProp(prop) {
+  try {
+    const bindings = await propAPI.storyboardBindings(prop.id)
+    if (bindings && bindings.length > 0) {
+      toast.error(`无法删除道具"${prop.name}"，已被 ${bindings.length} 个分镜引用`)
+    } else {
+      deleteConfirm.value = { type: 'prop', item: prop }
+    }
   } catch (e: any) { toast.error(e.message) }
 }
 
@@ -3038,6 +3237,51 @@ function handleSceneFileInput(id: number, event: Event) {
   if (!file) return
   uploadSceneImage(id, file)
   input.value = ''
+}
+
+// ---- Props Image Generation ----
+function openPropPrompt(prop) {
+  promptDialogProp.value = prop
+  propPromptDraft.value = prop.prompt || ''
+}
+function openPropUpload(id: number) {
+  uploadTargetPropId.value = id
+  propFileInput.value?.click()
+}
+async function genPropImg(prop) {
+  try {
+    toast.info(`正在为道具"${prop.name}"创建生图任务…`)
+    await propAPI.generateImage(prop.id, prop.prompt || undefined)
+    toast.success(`道具"${prop.name}"图片生成任务已提交`)
+    setTimeout(() => refresh(), 3000)
+  } catch (e: any) { toast.error(e.message) }
+}
+async function doGenPropImg(id: number, customPrompt?: string) {
+  try {
+    toast.info('正在为道具创建生图任务…')
+    await propAPI.generateImage(id, customPrompt || undefined)
+    toast.success('道具图片生成任务已提交')
+    setTimeout(() => refresh(), 3000)
+  } catch (e: any) { toast.error(e.message) }
+}
+function batchPropImages() {
+  const withoutImage = props.value.filter(p => !p.image_url && !p.imageUrl)
+  if (!withoutImage.length) { toast.info('所有道具已有图片'); return }
+  withoutImage.forEach(p => genPropImg(p))
+}
+async function handlePropFileInput(id: number, event: Event) {
+  const input = event.target as HTMLInputElement
+  const file = input.files?.[0]
+  if (!file) return
+  await uploadPropImage(id, file)
+  input.value = ''
+}
+async function uploadPropImage(id: number, file: File) {
+  try {
+    await propAPI.uploadImage(id, file)
+    toast.success('道具图片已上传')
+    await refresh()
+  } catch (e: any) { toast.error(e.message) }
 }
 
 const IGNORE_TTS_SPEAKERS = /^(环境音|环境声|音效|效果音|sfx|sound ?effect|bgm|背景音|背景音乐|ambient)$/i
