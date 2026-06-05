@@ -102,6 +102,22 @@ export const sceneAPI = {
   },
 }
 
+export const propAPI = {
+  list: (dramaId: number) => api.get<any[]>(`/props?dramaId=${dramaId}`),
+  create: (data: { drama_id: number; name: string; type?: string; description?: string; prompt?: string }) =>
+    api.post('/props', data),
+  update: (id: number, data: { name?: string; type?: string; category?: string; description?: string; prompt?: string }) =>
+    api.put(`/props/${id}`, data),
+  del: (id: number) => api.del(`/props/${id}`),
+  storyboardBindings: (id: number) => api.get<any[]>(`/props/${id}/storyboard-bindings`),
+  generateImage: (id: number, prompt?: string) => api.post(`/props/${id}/generate-image`, { ...(prompt ? { prompt } : {}) }),
+  uploadImage: (id: number, file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    return api.post(`/props/${id}/upload-image`, form)
+  },
+}
+
 export const imageAPI = {
   generate: (d: any) => api.post('/images', d),
   list: (params?: { drama_id?: number; storyboard_id?: number }) => {
