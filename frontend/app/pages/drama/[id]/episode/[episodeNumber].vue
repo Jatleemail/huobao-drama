@@ -4105,7 +4105,7 @@ onMounted(() => { refresh(); loadConfigs(); loadVoices() })
 .bubble-dot.current { background: var(--accent-dark); transform: scale(1.2); box-shadow: 0 0 0 2px rgba(76, 125, 255, 0.14); }
 
 /* Extract grid */
-.extract-stage { flex: 1; min-height: 0; overflow: hidden; padding: 12px 16px; display: grid; grid-template-columns: 280px minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
+.extract-stage { flex: 1; min-height: 0; overflow: auto; padding: 12px 16px; display: grid; grid-template-columns: 260px minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; align-items: stretch; }
 .extract-summary { padding: 16px; display: flex; flex-direction: column; gap: 14px; align-self: stretch; position: sticky; top: 0; max-height: 100%; }
 .extract-summary-kicker { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-3); }
 .extract-summary-title { font-size: 20px; line-height: 1.05; font-family: var(--font-display); color: var(--text-0); }
