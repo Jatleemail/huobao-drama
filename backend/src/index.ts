@@ -10,6 +10,7 @@ import episodes from './routes/episodes.js'
 import storyboards from './routes/storyboards.js'
 import scenes from './routes/scenes.js'
 import characters from './routes/characters.js'
+import props from './routes/props.js'
 import images from './routes/images.js'
 import videos from './routes/videos.js'
 import upload from './routes/upload.js'
@@ -31,7 +32,7 @@ const app = new Hono()
 
 // Middleware
 app.use('*', cors({
-  origin: ['http://localhost:3013', 'http://localhost:5679'],
+  origin: ['http://localhost:3013', 'http://localhost:5679', 'http://jatlee.icu:5679'],
   credentials: true,
 }))
 app.use('*', requestLogger)
@@ -47,6 +48,7 @@ api.route('/episodes', episodes)
 api.route('/storyboards', storyboards)
 api.route('/scenes', scenes)
 api.route('/characters', characters)
+api.route('/props', props)
 api.route('/images', images)
 api.route('/videos', videos)
 api.route('/upload', upload)

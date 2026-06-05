@@ -12,6 +12,7 @@ interface GenerateImageParams {
   dramaId?: number
   sceneId?: number
   characterId?: number
+  propId?: number
   prompt: string
   model?: string
   size?: string
@@ -38,6 +39,7 @@ export async function generateImage(params: GenerateImageParams): Promise<number
     dramaId: params.dramaId,
     sceneId: params.sceneId,
     characterId: params.characterId,
+    propId: params.propId,
     prompt: params.prompt,
     model,
     provider: config.provider,
@@ -306,6 +308,9 @@ async function handleImageComplete(id: number, provider: string, imageUrl: strin
   if (record?.sceneId) {
     db.update(schema.scenes).set({ imageUrl: localPath, status: 'completed', updatedAt: now() }).where(eq(schema.scenes.id, record.sceneId)).run()
   }
+  if (record?.propId) {
+    db.update(schema.props).set({ imageUrl: localPath, updatedAt: now() }).where(eq(schema.props.id, record.propId)).run()
+  }
 }
 
 async function handleImageCompleteBase64(id: number, provider: string, base64Data: string, mimeType: string) {
@@ -332,5 +337,8 @@ async function handleImageCompleteBase64(id: number, provider: string, base64Dat
   }
   if (record?.sceneId) {
     db.update(schema.scenes).set({ imageUrl: localPath, status: 'completed', updatedAt: now() }).where(eq(schema.scenes.id, record.sceneId)).run()
+  }
+  if (record?.propId) {
+    db.update(schema.props).set({ imageUrl: localPath, updatedAt: now() }).where(eq(schema.props.id, record.propId)).run()
   }
 }
