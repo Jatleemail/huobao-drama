@@ -39,17 +39,41 @@ agent_type: extractor
 ## 道具提取规范
 
 提取的道具信息包含：
-- **名称**：道具名
-- **类型**：日常/武器/交通/装饰等
-- **描述**：外观和用途
-- **图片提示词**：用于AI图片生成的英文提示词
+- **名称**：道具名（简洁准确，2-6字）
+- **类型**：武器 / 文件书信 / 食物饮品 / 交通工具 / 装饰品 / 科技设备 / 自然物品 / 其他
+- **描述**：外观和用途（≥50字，含材质、颜色、形状、大小、标志性细节）
+- **图片提示词**：英文，纯物品产品图风格，clean product shot, no people, no hands, isolated on neutral background
 
 ### 道具提取触发条件
 
 满足以下**任一**条件即提取：
 1. 被角色持有/使用且有特写描述
-2. 推动剧情发展的关键物品（如信物、武器、钥匙）
+2. 推动剧情发展的关键物品（如信物、武器、钥匙、书信）
 3. 反复出现（≥2 次）的环境物件或标志性物品
+
+### 道具图片提示词规范
+
+格式：
+```
+A clean product-shot of [道具名], [材质+颜色+形状], [关键细节],
+isolated on neutral background, studio lighting, high quality, detailed,
+no people, no hands, no text, no watermark.
+```
+
+示例：
+> A clean product-shot of an ancient bronze sword, bronze blade with green patina, dragon-head hilt carved from jade, blade length approx 80cm, double-edged with subtle blood groove, isolated on dark gradient background, dramatic rim lighting highlighting edge, high quality, detailed, no people, no hands, no text, no watermark.
+
+### 道具去重规则
+- 按**名称**精确匹配
+- 同名道具 → 合并信息，取更详细描述和提示词
+- 新类型覆盖旧类型（如从「其他」升级为「武器」）
+- 未匹配 → 正常新增
+
+### 工作流程中的道具处理
+角色和场景提取完成后，继续处理道具：
+1. 调用 `read_existing_props` 读取项目已有道具
+2. 分析本集涉及的道具，逐个判断新增或去重
+3. 调用 `save_dedup_props` 保存道具（自动去重合并）
 
 ## 去重与合并细则
 
