@@ -30,10 +30,20 @@ const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = 
 - 每场戏控制在 30-60 秒，含明确情绪转折
 - **不写镜头语言**：景别、角度、运镜属于分镜拆解步骤，不要在剧本改写中涉及
 
+## 场景识别与拆分规则（重要）
+- 原始文本中通过顿号（、）或"和""与""以及"等连词并列的多个地点，若指向**不同的物理空间**，必须拆分为独立场景
+- 判断标准：两个地点无法在同一镜头内同时呈现 → 视为独立场景，各自单独成场
+- 同一空间的补充描述（如"病房，靠窗的床位"）→ 合并为一个场景，不拆分
+- 示例：
+  - 原文含"心胸外科住院部走廊、张扬医生办公室" → 走廊和办公室是两个独立物理空间 → 拆分为 S01（心胸外科住院部走廊）和 S02（张扬医生办公室）
+  - 原文含"急诊室和 ICU 病房" → 两个独立空间 → 拆分为两个独立场景
+  - 原文含"咖啡厅，靠窗的角落座位" → 同一空间的细化描述 → 合并为一个场景
+
 ## 工作流程
 1. 调用 read_episode_script 读取原始内容
-2. 根据读取到的内容进行改写（输出格式化剧本格式）
-3. 调用 save_script 保存改写后的完整剧本
+2. 扫描原文中顿号（、）或连词连接的地点名词，按上述规则判断是否需要拆分
+3. 根据读取到的内容进行改写（输出格式化剧本格式）
+4. 调用 save_script 保存改写后的完整剧本
 
 ## 输出格式（严格遵循）
 - 场景头：\`## S01 | 内景/外景 · 地点 | 具体时段（如黄昏、深夜、清晨）\`
@@ -83,7 +93,7 @@ const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = 
 - 新角色：正常新增并关联到当前集
 
 ## 场景提取与去重复用
-每个场景包含：地点名称、时间段+光线、氛围描述（色调/情绪/声音）、英文图片提示词（纯背景，无人物）
+每个场景包含：地点名称、时间段+光线、氛围描述（色调/情绪/声音）、中文图片提示词（纯背景，无人物）
 
 ### 去重复用规则
 - 按「地点 + 时间段」精确匹配
@@ -103,7 +113,7 @@ const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = 
 - name：道具名称（简洁准确，2-6字）
 - category：类型分类（武器/文件书信/食物饮品/交通工具/装饰品/科技设备/自然物品/其他）
 - description：外观描述（材质、颜色、形状、大小、标志性细节，≥50字）
-- prompt：英文图片提示词（纯物品产品图风格，clean product shot, no people, no hands, isolated on neutral background）
+- prompt：中文图片提示词（纯物品产品图风格，纯色背景，无人手，无文字水印，影棚灯光，高品质细节）
 
 ### 去重合并规则
 - 按名称精确匹配现有道具
@@ -262,11 +272,11 @@ const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = 
   },
   grid_prompt_generator: {
     name: '图片提示词生成',
-    instructions: `你是专业的 AI 图像提示词工程师，为角色、场景和宫格图生成高质量英文提示词。
+    instructions: `你是专业的 AI 图像提示词工程师，为角色、场景和宫格图生成高质量中文提示词。
 参考文档：skills/grid_prompt_generator/reference/ 下的模板。
 
 ## 通用规范
-- 所有提示词使用英文
+- 所有提示词使用中文
 - 必须包含风格一致性约束：\`consistent art style\`
 - 必须包含质量标签：\`high quality, detailed\`
 - 禁止内容：text, watermark, signature, logo, lettering, UI elements
@@ -283,16 +293,16 @@ const DEFAULT_PROMPTS: Record<string, { name: string; instructions: string }> = 
 
 ### 工作流程
 1. 调用 read_characters 读取所有角色信息（含 appearance/personality/role）
-2. 逐个生成英文提示词
+2. 逐个生成中文提示词
 
 ### 提示词结构（按此顺序）
 \`\`\`
-[性别+年龄层] character, [姓名], [体型描述], [面部特征].
-[Hair details — 长度/颜色/发型].
-[Clothing/Accessories — 服装风格/颜色/配饰].
-[Pose and expression — 姿态/表情应与 personality 呼应].
-Background: [simple/gradient/neutral], no distractions.
-Style: [项目视觉风格], high quality, detailed, character concept art, consistent art style, no text, no watermark.
+[性别+年龄层]，角色[姓名]，[体型描述]，[面部特征]。
+[发型描述 — 长度/颜色/发型]。
+[服装配饰 — 风格/颜色/配饰]。
+[姿态和表情 — 应与性格特点呼应]。
+背景：[简洁/渐变/纯色]，无干扰元素。
+风格：[项目视觉风格]，高品质，精细，角色概念设计，统一艺术风格，无文字，无水印。
 \`\`\`
 
 ### 质量要求
@@ -306,15 +316,15 @@ Style: [项目视觉风格], high quality, detailed, character concept art, cons
 
 ### 工作流程
 1. 调用 read_scenes 读取所有场景信息（含 location/time/prompt）
-2. 逐个生成英文提示词
+2. 逐个生成中文提示词
 
 ### 提示词结构
 \`\`\`
-A [项目视觉风格] pure background scene of [location] at [time period].
-The scene shows [具体环境细节：建筑/物件/光线/氛围].
-No characters, no people, no figures, no silhouettes.
-Style: [项目视觉风格], rich details, atmospheric lighting, high quality, consistent art style, no text, no watermark.
-Mood: [2-3 words mood description].
+[项目视觉风格]纯背景场景，[地点]，[时间段]。
+场景包含[具体环境细节：建筑/物件/光线/氛围]。
+无人物，无角色，无人影，无剪影。
+风格：[项目视觉风格]，丰富细节，氛围光影，高品质，统一艺术风格，无文字，无水印。
+氛围：[2-3字氛围描述]。
 \`\`\`
 
 ### 质量要求
@@ -335,42 +345,42 @@ Mood: [2-3 words mood description].
 #### first_frame（首帧宫格）
 每个格子 = 一个镜头的起始画面。严格按用户指定的 rows×cols 生成。
 \`\`\`
-[rows x cols] grid, exactly [N] visible panels, consistent art style, [项目视觉风格],
-格1: [shot 1 opening scene — 1-2句英文描述],
-格2: [shot 2 opening scene — 1-2句英文描述],
+[rows x cols] 宫格图，共[N]格，统一艺术风格，[项目视觉风格]，
+格1: [镜头1起始画面 — 1-2句中文描述]，
+格2: [镜头2起始画面 — 1-2句中文描述]，
 ...
-格N: [shot N opening scene],
-high quality, cinematic lighting, no merged panels, no missing panels, no text, no watermark
+格N: [镜头N起始画面]，
+高品质，电影级光影，无合并格，无缺失格，无文字，无水印
 \`\`\`
 
 #### first_last（首尾帧宫格）
 每个镜头占 2 格（首帧+尾帧），营造节奏对比。严格按用户指定的 rows×cols 生成。
 \`\`\`
-[rows x cols] grid, exactly [N] visible panels, consistent art style, [项目视觉风格],
-格1: [opening beat — 1-2句英文],
-格2: [closing beat — 1-2句英文，与格1形成对比],
-格3: [opening beat],
-格4: [closing beat],
+[rows x cols] 宫格图，共[N]格，统一艺术风格，[项目视觉风格]，
+格1: [起始画面 — 1-2句中文]，
+格2: [结束画面 — 1-2句中文，与格1形成对比]，
+格3: [起始画面]，
+格4: [结束画面]，
 ...
-high quality, cinematic, continuous motion implied, no merged panels, no missing panels, no text
+高品质，电影质感，连续动态暗示，无合并格，无缺失格，无文字
 \`\`\`
 
 #### multi_ref（多参考宫格）
 所有格子 = 同一镜头的不同角度/构图。严格按用户指定的 rows×cols 生成。
 \`\`\`
-[rows x cols] grid, exactly [N] visible panels, same scene different angles, [项目视觉风格],
-[shared scene description — 1句总述],
-格1: wide shot establishing — [细节],
-格2: medium shot character focus — [细节],
-格3: close-up detail — [细节],
-格4: dramatic angle — [细节],
+[rows x cols] 宫格图，共[N]格，同一场景不同角度，[项目视觉风格]，
+[场景总体描述 — 1句总述]，
+格1: 广角建立镜头 — [细节]，
+格2: 中景角色聚焦 — [细节]，
+格3: 特写细节 — [细节]，
+格4: 戏剧化角度 — [细节]，
 ...
-consistent lighting and color palette, no merged panels, no missing panels, no text
+统一光影和色调，无合并格，无缺失格，无文字
 \`\`\`
 
 ### 宫格通用规则
-- 必须写 \`exactly N visible panels\`（N = rows × cols）
-- 必须写 \`no merged panels, no missing panels\`
+- 必须写 \`共N格\`（N = rows × cols）
+- 必须写 \`无合并格，无缺失格\`
 - 格子位置用”格1/格2/...”，参考图用”图片1/图片2/...”，不可混用
 - 尺寸建议：每格 960×540，总图 = (960×cols) × (540×rows)`,
   },
@@ -454,7 +464,7 @@ export function createAgent(type: string, episodeId: number, dramaId: number): A
       '',
       `## 当前项目视觉风格`,
       `项目的视觉风格设定为 **${zhStyle}**（${enStyle}）。`,
-      `- 道具提示词（prompt 字段）以「${enStyle} product shot」开头，替代通用的「clean product shot」。`,
+      `- 道具提示词（prompt 字段）以「${zhStyle}产品图」开头，替代通用的「纯色背景产品图」。`,
       '- 道具描述应与此风格保持一致。',
     ].join('\n')
   }
