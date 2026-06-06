@@ -603,6 +603,26 @@
             </div>
             <div class="toolbar-right">
               <span v-if="sbs.length" class="char-count">{{ sbs.length }} 镜头 · {{ totalDuration }}s</span>
+              <button
+                v-if="sbs.length"
+                class="btn btn-sm"
+                :disabled="!selectedSb"
+                title="在选中镜头上方插入新镜头"
+                @click="insertShotAbove"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                +上一行
+              </button>
+              <button
+                v-if="sbs.length"
+                class="btn btn-sm"
+                :disabled="!selectedSb"
+                title="在选中镜头下方插入新镜头"
+                @click="insertShotBelow"
+              >
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                +下一行
+              </button>
               <button v-if="sbs.length" class="btn btn-sm" @click="addShot">
                 <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
                 添加
@@ -3133,6 +3153,22 @@ async function doBreakdown() {
 }
 async function genSample(id) { try { await characterAPI.voiceSample(id, epId.value); toast.success('试听已生成'); refresh() } catch (e) { toast.error(e.message) } }
 async function addShot() { await storyboardAPI.create({ episode_id: epId.value, storyboard_number: sbs.value.length + 1, title: `镜头${sbs.value.length + 1}`, duration: 10 }); refresh() }
+async function insertShotAbove() {
+  if (!selectedSb.value) return
+  try {
+    const result = await storyboardAPI.insert(epId.value, selectedSb.value.id, 'above')
+    if (result.storyboards) { sbs.value = result.storyboards } else { await refresh() }
+    toast.success('镜头已插入')
+  } catch (e) { toast.error(e.message) }
+}
+async function insertShotBelow() {
+  if (!selectedSb.value) return
+  try {
+    const result = await storyboardAPI.insert(epId.value, selectedSb.value.id, 'below')
+    if (result.storyboards) { sbs.value = result.storyboards } else { await refresh() }
+    toast.success('镜头已插入')
+  } catch (e) { toast.error(e.message) }
+}
 
 function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms))

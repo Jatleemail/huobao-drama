@@ -127,6 +127,94 @@ app.post('/', async (c) => {
   })
 })
 
+// POST /storyboards/insert — Insert a storyboard above or below a reference shot
+app.post('/insert', async (c) => {
+  const body = await c.req.json()
+  const episodeId = body.episode_id
+  const referenceStoryboardId = body.reference_storyboard_id
+  const direction = body.direction
+
+  if (!episodeId || !referenceStoryboardId || !direction) {
+    return badRequest(c, 'episode_id, reference_storyboard_id, and direction are required')
+  }
+  if (!['above', 'below'].includes(direction)) {
+    return badRequest(c, 'direction must be "above" or "below"')
+  }
+
+  logTaskStart('StoryboardAPI', 'insert', {
+    episodeId,
+    referenceStoryboardId,
+    direction,
+  })
+
+  validateStoryboardBindings(episodeId, body.scene_id, body.character_ids)
+
+  // Find the reference storyboard
+  const [refSb] = db.select().from(schema.storyboards)
+    .where(eq(schema.storyboards.id, referenceStoryboardId)).all()
+  if (!refSb) return badRequest(c, 'Reference storyboard not found')
+
+  // Determine target storyboard_number
+  const targetNumber = direction === 'above'
+    ? refSb.storyboardNumber
+    : refSb.storyboardNumber + 1
+
+  // Shift all storyboards at or above the target position up by 1
+  // Process from highest to lowest to avoid unique constraint conflicts
+  const toShift = db.select().from(schema.storyboards)
+    .where(eq(schema.storyboards.episodeId, episodeId)).all()
+    .filter(sb => sb.storyboardNumber >= targetNumber)
+    .sort((a, b) => b.storyboardNumber - a.storyboardNumber)
+
+  const ts = now()
+  for (const sb of toShift) {
+    db.update(schema.storyboards)
+      .set({ storyboardNumber: sb.storyboardNumber + 1, updatedAt: ts })
+      .where(eq(schema.storyboards.id, sb.id))
+      .run()
+  }
+
+  // Insert the new storyboard at the target position
+  const res = db.insert(schema.storyboards).values({
+    episodeId,
+    storyboardNumber: targetNumber,
+    title: body.title || `镜头${targetNumber}`,
+    description: body.description || null,
+    action: body.action || null,
+    dialogue: body.dialogue || null,
+    sceneId: body.scene_id || null,
+    duration: body.duration || 10,
+    createdAt: ts,
+    updatedAt: ts,
+  }).run()
+
+  const newId = Number(res.lastInsertRowid)
+  syncStoryboardCharacters(newId, body.character_ids || [])
+  syncStoryboardProps(newId, body.prop_ids || [])
+
+  logTaskSuccess('StoryboardAPI', 'insert', {
+    storyboardId: newId,
+    episodeId,
+    targetNumber,
+    direction,
+  })
+
+  // Return all storyboards re-sequenced
+  const rows = db.select().from(schema.storyboards)
+    .where(eq(schema.storyboards.episodeId, episodeId))
+    .orderBy(schema.storyboards.storyboardNumber)
+    .all()
+
+  return created(c, {
+    inserted_id: newId,
+    storyboards: rows.map((row) => ({
+      ...toSnakeCase(row),
+      character_ids: getStoryboardCharacterIds(row.id),
+      prop_ids: getStoryboardPropIds(row.id),
+    })),
+  })
+})
+
 // PUT /storyboards/:id
 app.put('/:id', async (c) => {
   const id = Number(c.req.param('id'))

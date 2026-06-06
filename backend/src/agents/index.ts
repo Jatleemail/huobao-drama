@@ -445,6 +445,20 @@ export function createAgent(type: string, episodeId: number, dramaId: number): A
     ].join('\n')
   }
 
+  // Append visual style note for extractor
+  if (type === 'extractor' && dramaStyle) {
+    const zhStyle = styleZhLabel(dramaStyle)
+    const enStyle = styleEnTag(dramaStyle)
+    instructions = [
+      instructions,
+      '',
+      `## 当前项目视觉风格`,
+      `项目的视觉风格设定为 **${zhStyle}**（${enStyle}）。`,
+      `- 道具提示词（prompt 字段）以「${enStyle} product shot」开头，替代通用的「clean product shot」。`,
+      '- 道具描述应与此风格保持一致。',
+    ].join('\n')
+  }
+
   const name = dbConfig?.name || defaults.name
 
   let tools: Record<string, any> = {}

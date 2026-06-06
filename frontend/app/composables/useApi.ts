@@ -69,6 +69,14 @@ export const storyboardAPI = {
   update: (id: number, data: any) => api.put(`/storyboards/${id}`, data),
   generateTTS: (id: number) => api.post(`/storyboards/${id}/generate-tts`),
   del: (id: number) => api.del(`/storyboards/${id}`),
+  insert: (episodeId: number, referenceStoryboardId: number, direction: 'above' | 'below') =>
+    api.post('/storyboards/insert', {
+      episode_id: episodeId,
+      reference_storyboard_id: referenceStoryboardId,
+      direction,
+      title: '镜头',
+      duration: 10,
+    }),
 }
 
 export const characterAPI = {
