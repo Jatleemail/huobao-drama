@@ -3312,7 +3312,7 @@ function handleSceneFileInput(id: number, event: Event) {
 
 // ---- Props Image Generation ----
 function propPrompt(p: any) {
-  return p.prompt || `A clean product-shot of ${p.name}, ${p.description || ''}, isolated on neutral background, studio lighting, high quality, detailed, no people, no hands, no text, no watermark.`
+  return p.prompt || `产品图：${p.name}，${p.description || ''}，纯色背景，影棚灯光，高品质，细节丰富，无人手，无文字，无水印。`
 }
 function isPendingPropImage(id) {
   return pendingPropImageIds.value.includes(id)

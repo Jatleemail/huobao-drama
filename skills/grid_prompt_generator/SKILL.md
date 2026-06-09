@@ -24,25 +24,25 @@ agent_type: grid_prompt_generator
 
 ### 模板结构
 ```
-[Gender + age] character, [name], [body type], [facial features].
-[Hair description — length/color/style].
-[Clothing/Accessories — style/color/accessories].
-[Pose and expression matching personality].
-Background: [simple/gradient/neutral], no distractions.
-Style: [project visual style], high quality, detailed, character concept art, consistent art style, no text, no watermark.
+[性别+年龄层]，角色[姓名]，[体型描述]，[面部特征]。
+[发型描述 — 长度/颜色/发型]。
+[服装/配饰 — 风格/颜色/配饰]。
+[姿态和表情 — 与性格特点呼应]。
+背景：[简洁/渐变/纯色]，无干扰元素。
+风格：[项目视觉风格]，高品质，精细，角色概念设计，统一艺术风格，无文字，无水印。
 ```
 
 ### 完整示例
 ```
-A young male character in his late teens, Xiao Heshang, slender build,
-gentle oval face with bright sincere eyes and a warm smile.
-Short black hair, neatly shaved. Wearing a simple grey Buddhist robe
-with brown wooden beads on left wrist, straw sandals.
-Standing with hands clasped in prayer, eyes lowered reverently,
-soft morning light falling on face.
-Background: soft misty gradient with distant mountain silhouette.
-Style: chinoiserie ink wash, high quality, detailed, character concept art,
-consistent art style, no text, no watermark.
+少年男性角色，小和尚，身形清瘦，
+温和的瓜子脸，明亮的眼睛透着真诚，带着温暖的微笑。
+黑色短发，剃得干净利落。身穿简朴的灰色僧袍，
+左手腕戴一串棕色木佛珠，脚穿草鞋。
+双手合十站立，眼帘低垂虔诚，
+柔和的晨光洒在脸上。
+背景：柔和迷雾渐变，远处山峦剪影。
+风格：中国风水墨画风格，高品质，精细，角色概念设计，
+统一艺术风格，无文字，无水印。
 ```
 
 ### 生成规则
@@ -66,25 +66,25 @@ consistent art style, no text, no watermark.
 
 ### 模板结构
 ```
-A [visual style] pure background scene of [location] at [time period].
-The scene shows [environment details — architecture/objects/lighting/atmosphere].
-No characters, no people, no figures, no silhouettes.
-Style: [visual style], rich details, atmospheric lighting, high quality, consistent art style, no text, no watermark.
-Mood: [2-3 words specific mood].
+[项目视觉风格]纯背景场景，[地点]，[时间段]。
+场景包含[环境细节 — 建筑/物件/光线/氛围]。
+无人物，无角色，无人影，无剪影。
+风格：[项目视觉风格]，丰富细节，氛围光影，高品质，统一艺术风格，无文字，无水印。
+氛围：[2-3字具体氛围]。
 ```
 
 ### 完整示例
 ```
-A chinoiserie ink wash pure background scene of a mountain temple courtyard at dawn.
-The scene shows an ancient stone courtyard with moss-covered steps,
-a bronze incense burner with curling smoke in center,
-weathered wooden pillars supporting curved eaves with morning dew on tiles,
-a dry water vat in corner, withered potted plants nearby.
-Soft golden light filtering through morning mist, casting long gentle shadows.
-No characters, no people, no figures, no silhouettes.
-Style: chinoiserie ink wash, rich details, atmospheric lighting, high quality,
-consistent art style, no text, no watermark.
-Mood: serene, tranquil, sacred.
+中国风水墨画风格纯背景场景，山间庙院，黎明时分。
+场景包含古老石砌庭院，苔藓覆盖的台阶，
+中央铜香炉青烟袅袅升起，
+风化木柱支撑着飞檐翘角，青瓦上挂着晨露，
+角落处干涸的水缸，一旁枯萎的盆栽。
+柔和金光穿透晨雾，投下修长淡影。
+无人物，无角色，无人影，无剪影。
+风格：中国风水墨画风格，丰富细节，氛围光影，高品质，
+统一艺术风格，无文字，无水印。
+氛围：宁静，悠远，庄严。
 ```
 
 ### 生成规则
@@ -106,48 +106,48 @@ Mood: serene, tranquil, sacred.
 每个格子 = 一个镜头的起始画面，但必须严格生成用户指定的 `rows x cols` 总格数。
 
 ```
-[rows x cols grid layout], exactly [rows*cols] visible panels, consistent art style, [style description],
-格1: [shot 1 opening scene],
-格2: [shot 2 opening scene],
-格3: [shot 3 opening scene],
+[rows x cols 宫格布局]，共[rows*cols]格，统一艺术风格，[风格描述]，
+格1: [镜头1起始画面]，
+格2: [镜头2起始画面]，
+格3: [镜头3起始画面]，
 ...
-格N: [opening scene],
-high quality, cinematic lighting, no merged panels, no missing panels, no text, no watermark
+格N: [起始画面]，
+高品质，电影级光影，无合并格，无缺失格，无文字，无水印
 ```
 
 #### 首尾帧模式 (first_last)
 保持首尾帧节奏感，但仍然必须严格生成用户指定的 `rows x cols` 总格数，不允许偷偷改成 `Nx2`。
 
 ```
-[rows x cols grid layout], exactly [rows*cols] visible panels, consistent art style, [style description],
-格1: [opening beat],
-格2: [closing beat],
-格3: [opening beat],
-格4: [closing beat],
+[rows x cols 宫格布局]，共[rows*cols]格，统一艺术风格，[风格描述]，
+格1: [起始画面]，
+格2: [结束画面]，
+格3: [起始画面]，
+格4: [结束画面]，
 ...
-high quality, cinematic, continuous motion implied, no merged panels, no missing panels, no text
+高品质，电影质感，连续动态暗示，无合并格，无缺失格，无文字
 ```
 
 #### 多参考模式 (multi_ref)
 所有格子都是同一镜头的不同角度/构图参考，但仍然必须严格生成用户指定的 `rows x cols` 总格数。
 
 ```
-[rows x cols grid layout], exactly [rows*cols] visible panels, same scene different angles, [style description],
-[main scene description],
-格1: wide shot establishing,
-格2: medium shot character focus,
-格3: close-up detail,
-格4: dramatic angle,
+[rows x cols 宫格布局]，共[rows*cols]格，同一场景不同角度，[风格描述]，
+[场景总体描述]，
+格1: 广角建立镜头，
+格2: 中景角色聚焦，
+格3: 特写细节，
+格4: 戏剧化角度，
 ...
-consistent lighting and color palette, no merged panels, no missing panels, no text
+统一光影和色调，无合并格，无缺失格，无文字
 ```
 
 ### 通用规则
-1. 提示词使用**英文**
+1. 提示词使用**中文**
 2. 必须明确写出用户指定的 `rows x cols grid layout`
 3. 必须包含 `consistent art style` 保持风格统一
-4. 必须明确要求 `exactly N visible panels`
-5. 必须明确要求 `no merged panels, no missing panels`
+4. 必须明确要求 `共N格`
+5. 必须明确要求 `无合并格，无缺失格`
 6. 避免在格子间出现分割线的描述
 7. 尺寸建议：每格 960x540，总图 = 960×cols × 540×rows
 8. 当存在参考图映射时，统一使用 `图片1/图片2/...` 指代参考图，不要把它和 `格1/格2/...` 混用

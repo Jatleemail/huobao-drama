@@ -34,7 +34,7 @@ agent_type: extractor
   - 室内光：光源类型 + 强度 + 阴影特征（如：烛光摇曳，暖黄色，墙面长影）
   - 特殊天气：雨天/雪天/雾天 → 对应散射光和能见度描述
 - **氛围**：环境氛围描述
-- **提示词**：用于AI图片生成的英文提示词（纯背景，不含人物）
+- **提示词**：用于AI图片生成的中文提示词（纯背景，不含人物）
 
 ## 道具提取规范
 
@@ -42,7 +42,7 @@ agent_type: extractor
 - **名称**：道具名（简洁准确，2-6字）
 - **类型**：武器 / 文件书信 / 食物饮品 / 交通工具 / 装饰品 / 科技设备 / 自然物品 / 其他
 - **描述**：外观和用途（≥50字，含材质、颜色、形状、大小、标志性细节）
-- **图片提示词**：英文，纯物品产品图风格，clean product shot, no people, no hands, isolated on neutral background
+- **图片提示词**：中文，纯物品产品图风格，纯色背景，无人手，无文字水印，影棚灯光，高品质细节
 
 ### 道具提取触发条件
 
@@ -55,13 +55,13 @@ agent_type: extractor
 
 格式：
 ```
-A clean product-shot of [道具名], [材质+颜色+形状], [关键细节],
-isolated on neutral background, studio lighting, high quality, detailed,
-no people, no hands, no text, no watermark.
+纯色背景产品图，[道具名]，[材质+颜色+形状]，[关键细节]，
+纯色背景，影棚灯光，高品质，细节丰富，
+无人手，无文字，无水印。
 ```
 
 示例：
-> A clean product-shot of an ancient bronze sword, bronze blade with green patina, dragon-head hilt carved from jade, blade length approx 80cm, double-edged with subtle blood groove, isolated on dark gradient background, dramatic rim lighting highlighting edge, high quality, detailed, no people, no hands, no text, no watermark.
+> 纯色背景产品图，古青铜剑，青铜剑身带有绿色铜锈，龙头剑柄由玉石雕刻而成，剑长约80厘米，双刃带细微血槽，深色渐变背景，戏剧性轮廓光凸显剑刃边缘，高品质，细节丰富，无人手，无文字，无水印。
 
 ### 道具去重规则
 - 按**名称**精确匹配

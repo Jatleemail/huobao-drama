@@ -41,7 +41,7 @@ export function createGridPromptTools(episodeId: number, dramaId: number, dramaS
 
   const generateCharacterPrompt = createTool({
     id: 'generate_character_prompt',
-    description: '为角色生成 AI 图片生成的英文提示词。',
+    description: '为角色生成 AI 图片生成的中文提示词。',
     inputSchema: z.object({
       character_id: z.number(),
     }),
@@ -90,7 +90,7 @@ export function createGridPromptTools(episodeId: number, dramaId: number, dramaS
 
   const generateScenePrompt = createTool({
     id: 'generate_scene_prompt',
-    description: '为场景生成 AI 图片生成的英文提示词。',
+    description: '为场景生成 AI 图片生成的中文提示词。',
     inputSchema: z.object({
       scene_id: z.number(),
     }),

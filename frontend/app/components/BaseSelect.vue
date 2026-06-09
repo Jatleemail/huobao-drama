@@ -33,6 +33,8 @@
                 :class="['base-select-option', { selected: opt.value === modelValue, highlighted: highlightedIdx === getGlobalIdx(gi, oi) }]"
                 @click="pick(opt)"
                 @mousemove="highlightedIdx = getGlobalIdx(gi, oi)"
+                @mouseenter="showTooltip($event, opt)"
+                @mouseleave="hideTooltip"
               >{{ opt.label }}</button>
             </template>
           </template>
@@ -45,11 +47,20 @@
     <Teleport to="body">
       <div v-if="isOpen" class="base-select-backdrop" @click="isOpen = false" />
     </Teleport>
+
+    <!-- Tooltip -->
+    <Teleport to="body">
+      <div
+        v-if="tooltip.visible"
+        class="base-select-tooltip"
+        :style="{ top: tooltip.top + 'px', left: tooltip.left + 'px' }"
+      >{{ tooltip.text }}</div>
+    </Teleport>
   </div>
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
+import { ref, reactive, computed, watch, nextTick, onMounted, onBeforeUnmount } from 'vue'
 import { ChevronDown, Search } from 'lucide-vue-next'
 
 const props = defineProps({
@@ -68,6 +79,7 @@ const searchInputEl = ref()
 const optionsEl = ref()
 const highlightedIdx = ref(-1)
 const dropdownStyle = ref({})
+const tooltip = reactive({ visible: false, text: '', top: 0, left: 0 })
 
 // Normalize options: support both flat list and grouped format
 const normalizedGroups = computed(() => {
@@ -76,7 +88,7 @@ const normalizedGroups = computed(() => {
   if (props.options[0]?.options) {
     return props.options.map(g => ({
       label: g.label || '',
-      options: g.options.map(o => ({ label: o.label ?? o, value: o.value ?? o })),
+      options: g.options.map(o => ({ label: o.label ?? o, value: o.value ?? o, description: o.description })),
     }))
   }
   // Flat list with optional group property
@@ -84,7 +96,7 @@ const normalizedGroups = computed(() => {
   for (const o of props.options) {
     const label = o.group || ''
     if (!map.has(label)) map.set(label, [])
-    map.get(label).push({ label: o.label ?? o, value: o.value ?? o })
+    map.get(label).push({ label: o.label ?? o, value: o.value ?? o, description: o.description })
   }
   return Array.from(map.entries()).map(([label, options]) => ({ label, options }))
 })
@@ -148,6 +160,30 @@ function close() {
 function pick(opt) {
   emit('update:modelValue', opt.value)
   close()
+}
+
+let tooltipTimer = null
+
+function showTooltip(e, opt) {
+  if (!opt.description) return
+  hideTooltip()
+  tooltipTimer = setTimeout(() => {
+    const rect = e.target.getBoundingClientRect()
+    tooltip.text = opt.description
+    tooltip.top = rect.top
+    tooltip.left = rect.right + 8
+    // Keep within viewport
+    const tw = 240 // estimated tooltip max-width
+    if (tooltip.left + tw > window.innerWidth - 16) {
+      tooltip.left = rect.left - tw - 8
+    }
+    tooltip.visible = true
+  }, 400)
+}
+
+function hideTooltip() {
+  if (tooltipTimer) { clearTimeout(tooltipTimer); tooltipTimer = null }
+  tooltip.visible = false
 }
 
 function positionDropdown() {
@@ -346,5 +382,28 @@ onBeforeUnmount(() => {
 @keyframes baseSelectIn {
   from { opacity: 0; transform: translateY(-6px) scale(0.98); }
   to   { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Tooltip */
+.base-select-tooltip {
+  position: fixed;
+  z-index: 10000;
+  max-width: 240px;
+  padding: 8px 12px;
+  font-size: 12px;
+  line-height: 1.55;
+  color: #fff;
+  background: rgba(15, 15, 25, 0.94);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--radius);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+  animation: tooltipIn 0.18s var(--ease-out);
+  word-break: break-word;
+}
+
+@keyframes tooltipIn {
+  from { opacity: 0; transform: translateX(-4px); }
+  to   { opacity: 1; transform: translateX(0); }
 }
 </style>

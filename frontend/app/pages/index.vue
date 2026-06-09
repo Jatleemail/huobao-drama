@@ -51,7 +51,7 @@
           <h3 class="project-title">{{ d.title }}</h3>
 
           <div class="project-meta">
-            <span v-if="d.style" class="style-tag">{{ styleLabels[d.style] || d.style }}</span>
+            <span v-if="d.style" class="style-tag">{{ STYLE_SHORT_LABELS[d.style] || d.style }}</span>
             <span class="meta-item">
               <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
               {{ d.characters?.length || 0 }}
@@ -138,21 +138,13 @@
 import { toast } from 'vue-sonner'
 import { dramaAPI } from '~/composables/useApi'
 import BaseSelect from '~/components/BaseSelect.vue'
+import { STYLE_CATEGORIES, STYLE_SHORT_LABELS } from '~/constants/styles'
 
 const dramas = ref([])
 const loading = ref(false)
 const showCreate = ref(false)
 const form = ref({ title: '', total_episodes: 1, style: '', aspect_ratio: '16:9' })
-const styleLabels = {
-  realistic: '写实',
-  anime: '动漫',
-  ghibli: '吉卜力',
-  cinematic: '电影级',
-  comic: '漫画',
-  watercolor: '水彩',
-}
-const styles = ['realistic', 'anime', 'ghibli', 'cinematic', 'comic', 'watercolor']
-const styleSelectOptions = computed(() => styles.map(s => ({ label: styleLabels[s], value: s })))
+const styleSelectOptions = STYLE_CATEGORIES
 const aspectRatioOptions = [
   { label: '16:9 横屏', value: '16:9' },
   { label: '9:16 竖屏', value: '9:16' },

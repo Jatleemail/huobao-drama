@@ -5,7 +5,7 @@ import { success, created, badRequest, now } from '../utils/response.js'
 import { generateImage } from '../services/image-generation.js'
 import { saveUploadedFile } from '../utils/storage.js'
 import { logTaskError, logTaskStart, logTaskSuccess } from '../utils/task-logger.js'
-import { getDramaVisualSettings, aspectRatioToSize, styleEnTag } from '../utils/style-mapping.js'
+import { getDramaVisualSettings, aspectRatioToSize, styleZhLabel } from '../utils/style-mapping.js'
 
 const app = new Hono()
 
@@ -91,9 +91,9 @@ app.post('/:id/generate-image', async (c) => {
   const { style: dramaStyle, aspectRatio } = getDramaVisualSettings(prop.dramaId)
   const size = aspectRatioToSize(aspectRatio)
 
-  const styleTag = styleEnTag(dramaStyle)
+  const styleTag = styleZhLabel(dramaStyle)
   const prompt = body.prompt || prop.prompt ||
-    `${styleTag}, product-shot of ${prop.name}, ${prop.description || ''}, isolated on neutral background, studio lighting, high quality, detailed, no people, no hands, no text, no watermark.`
+    `${styleTag}风格，产品图：${prop.name}，${prop.description || ''}，纯色背景，影棚灯光，高品质，细节丰富，无人手，无文字，无水印。`
 
   try {
     logTaskStart('PropImage', 'generate', { propId: id, dramaId: prop.dramaId, style: dramaStyle, aspectRatio })
